@@ -34,6 +34,7 @@ target_link_libraries(myutil
         ${mygmpxx}
         ${mygmp}
 )
+set_target_properties(myutil PROPERTIES PUBLIC_HEADER util.h)
 
 # specify the include directory for the library
 target_include_directories(myutil PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
