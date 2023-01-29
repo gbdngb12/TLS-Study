@@ -1,6 +1,6 @@
 #include <catch2/catch_all.hpp>
 
-#include "src/util/util.h"
+#include "util.h"
 
 TEST_CASE("test name") {
     uint8_t arr[8];
