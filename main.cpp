@@ -2,10 +2,9 @@
 
 #include "util.h"
 
-TEST_CASE("test name") {
-    uint8_t arr[8];
-    mpz_class a{"0x1234567890abcdef"};
-    Util::mpz_to_bnd(a, arr, arr + 8);
-    mpz_class b = Util::bnd_to_mpz(arr, arr + 8);
-    REQUIRE(a == b);
+TEST_CASE("diffie hellman") {
+    Util::DiffieHellman Alice, Bob;
+    Alice.set_peer_pubkey(Bob.y_);//Bob의 키가 Alice에게 전달
+    Bob.set_peer_pubkey(Alice.y_); //Alice의 키가 Bob에게 전달
+    REQUIRE(Alice.K_ == Bob.K_);
 }
