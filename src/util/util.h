@@ -1,9 +1,12 @@
 #pragma once
 #include <gmpxx.h>
-#include <sstream>
+
 #include <cassert>
 #include <iomanip>
 #include <random>
+#include <sstream>
+
+namespace Util {
 
 // n보다 큰 최초의 소수를 리턴한다.
 mpz_class nextprime(mpz_class n);
@@ -39,8 +42,9 @@ template <class C>
 std::string hexprint(const char *p, const C &c) {
     std::stringstream ss;
     ss << p << " : 0x";
-    for(unsigned char a : c) {
+    for (unsigned char a : c) {
         ss << std::hex << std::setw(2) << std::setfill('0') << +a;
     }
     return ss.str();
 }
+}  // namespace Util

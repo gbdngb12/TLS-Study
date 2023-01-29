@@ -1,17 +1,11 @@
 #include <catch2/catch_all.hpp>
 
-#include <iostream>
-#include <algorithm>
-using namespace std;
+#include "src/util/util.h"
 
 TEST_CASE("test name") {
-    vector<int> a, b;
-
-    a.push_back(4);
-    a.push_back(5);
-
-    b.push_back(5);
-    b.push_back(4);
-
-    REQUIRE(equal(a.begin(), a.end(), b.begin()));
+    uint8_t arr[8];
+    mpz_class a{"0x1234567890abcdef"};
+    Util::mpz_to_bnd(a, arr, arr + 8);
+    mpz_class b = Util::bnd_to_mpz(arr, arr + 8);
+    REQUIRE(a == b);
 }
