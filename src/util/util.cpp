@@ -38,8 +38,3 @@ mpz_class Util::random_prime(unsigned byte) {
         return z;
     }
 }
-
-mpz_class Util::DiffieHellman::set_peer_pubkey(mpz_class pub_key) {
-    K_ = Util::powm(pub_key, x_, p_);
-    return K_;
-}
