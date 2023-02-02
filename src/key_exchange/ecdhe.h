@@ -2,6 +2,7 @@
 #include <gmpxx.h>
 #include "util.h"
 #include <iostream>
+#include <cassert>
 
 namespace EllipticCurveDHE {
 
@@ -19,7 +20,7 @@ public:
     EC_Point(mpz_class x, mpz_class y, const EC_Field &f);
     mpz_class x, y;// x, y
     EC_Point operator+(const EC_Point &r) const; //두 좌표의 합
-    EC_Point operator*(const mpz_class &r) const;// P * k
+    EC_Point operator*(mpz_class r) const;// P * k
     bool operator==(const EC_Point &r) const;
 };
 };

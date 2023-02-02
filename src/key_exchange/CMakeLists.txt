@@ -1,5 +1,6 @@
-project(myutil)
-add_library(myutil util.cpp) 
+project(ecdhe)
+
+add_library(ecdhe ecdhe.cpp) 
 
 # if you are also using the GMPXX library, you will need to link it to the library
 #find_package(GMPXX REQUIRED)
@@ -18,12 +19,13 @@ else()
 	message(STATUS "gmpxx found! as ${mygmpxx}")
 endif()
 
-target_link_libraries(myutil
+target_link_libraries(ecdhe
     PUBLIC
         ${mygmpxx}
         ${mygmp}
+        myutil
 )
-set_target_properties(myutil PROPERTIES PUBLIC_HEADER util.h)
+set_target_properties(ecdhe PROPERTIES PUBLIC_HEADER ecdhe.h)
 
 # specify the include directory for the library
-target_include_directories(myutil PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(ecdhe PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

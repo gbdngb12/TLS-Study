@@ -55,6 +55,11 @@ EllipticCurveDHE::EC_Point EllipticCurveDHE::EC_Point::operator*(mpz_class r) co
     return R;
 }
 
-EllipticCurveDHE::EC_Point operator*(const mpz_class &l, const EC_Point &r) { //k * P
+EllipticCurveDHE::EC_Point operator*(const mpz_class &l, const EllipticCurveDHE::EC_Point &r) { //k * P
     return r * l;
+}
+
+std::ostream& operator<<(std::ostream &is, const EllipticCurveDHE::EC_Point &r) {
+    is << "( "<< r.x << ", " << r.y << " )";
+    return is;
 }

@@ -8,7 +8,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 project(catchtest)
 
 add_subdirectory("catch2")
-add_subdirectory("src/util")
+add_subdirectory("src")
+#add_subdirectory("src/key_exchange")
 
 add_executable(${PROJECT_NAME} main.cpp)
 
@@ -27,4 +28,5 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Catch2::Catch2WithMain
         myutil
+        ecdhe
 )
