@@ -10,6 +10,7 @@ TEST_CASE("key_exchange") {
 
     for(int i = 1; i <= 20; i++) {
         std::cout << i * p << std::endl;
+        //i * p;
     }
     auto xA = p * 3;
     auto xB = p * 7;

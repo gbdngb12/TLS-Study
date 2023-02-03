@@ -13,6 +13,7 @@ mpz_class EllipticCurveDHE::EC_Field::mod_inv(const mpz_class &z) const {  // �
 }
 
 EllipticCurveDHE::EC_Point::EC_Point(mpz_class x, mpz_class y, const EC_Field &f) : EC_Field{f} {
+    //std::cout << "Check" << "(" << x << ", " << y << ")" << std::endl;
     if (y != mod) assert((y * y - (x * x * x + a * x + b)) % mod == 0);  // 좌표가 유한체의 원소인지 확인한다.
     this->x = x;
     this->y = y;
@@ -37,7 +38,7 @@ EllipticCurveDHE::EC_Point EllipticCurveDHE::EC_Point::operator+(const EC_Point 
     }
     mpz_class x3 = (s * s - x - r.x) % mod;//s^2 - x_p - x_q  % mod
     mpz_class y3 = (s * (x - x3) - y) % mod;//(s(x_p - x_r) - y_p ) % mod
-    return {x < 0 ? x3 + mod : x3/*mod값이 음수라면 +mod해서 리턴*/, y3 < 0 ? y3 + mod : y3, *this};
+    return {x3 < 0 ? x3 + mod : x3/*mod값이 음수라면 +mod해서 리턴*/, y3 < 0 ? y3 + mod : y3, *this}; //fucking 오타났었음 x3값을 확인해야 하는데 x값을 확인함
 }
 
 EllipticCurveDHE::EC_Point EllipticCurveDHE::EC_Point::operator*(mpz_class r) const { //P * k
