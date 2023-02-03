@@ -1,6 +1,6 @@
-project(ecdhe)
+project(key_exchange)
 
-add_library(ecdhe ecdhe.cpp) 
+add_library(key_exchange key_exchange.cpp) 
 
 # if you are also using the GMPXX library, you will need to link it to the library
 #find_package(GMPXX REQUIRED)
@@ -19,13 +19,13 @@ else()
 	message(STATUS "gmpxx found! as ${mygmpxx}")
 endif()
 
-target_link_libraries(ecdhe
+target_link_libraries(key_exchange
     PUBLIC
         ${mygmpxx}
         ${mygmp}
         myutil
 )
-set_target_properties(ecdhe PROPERTIES PUBLIC_HEADER ecdhe.h)
+set_target_properties(key_exchange PROPERTIES PUBLIC_HEADER "key_exchange.h")
 
 # specify the include directory for the library
-target_include_directories(ecdhe PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(key_exchange PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

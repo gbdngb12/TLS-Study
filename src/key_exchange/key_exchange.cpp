@@ -1,30 +1,29 @@
-#include "ecdhe.h"
+#include "key_exchange.h"
 
-EllipticCurveDHE::EC_Field::EC_Field(mpz_class a, mpz_class b, mpz_class mod) {  // y^2 = x^3 + ax + b ( mod mod )
+KEY_EXCHANGE::EC_Field::EC_Field(mpz_class a, mpz_class b, mpz_class mod) {  // y^2 = x^3 + ax + b ( mod mod )
     this->a = a;
     this->b = b;
     this->mod = mod;
 }
 
-mpz_class EllipticCurveDHE::EC_Field::mod_inv(const mpz_class &z) const {  // 나머지 역원을 구하는 함수
+mpz_class KEY_EXCHANGE::EC_Field::mod_inv(const mpz_class &z) const {  // 나머지 역원을 구하는 함수
     mpz_class r;
     mpz_invert(r.get_mpz_t(), z.get_mpz_t(), mod.get_mpz_t());
     return r;
 }
 
-EllipticCurveDHE::EC_Point::EC_Point(mpz_class x, mpz_class y, const EC_Field &f) : EC_Field{f} {
-    //std::cout << "Check" << "(" << x << ", " << y << ")" << std::endl;
+KEY_EXCHANGE::EC_Point::EC_Point(mpz_class x, mpz_class y, const EC_Field &f) : EC_Field{f} {
     if (y != mod) assert((y * y - (x * x * x + a * x + b)) % mod == 0);  // 좌표가 유한체의 원소인지 확인한다.
     this->x = x;
     this->y = y;
 }
 
-bool EllipticCurveDHE::EC_Point::operator==(const EC_Point &r) const {
+bool KEY_EXCHANGE::EC_Point::operator==(const EC_Point &r) const {
     assert(a == r.a && b == r.b && mod == r.mod);  // 같은 타원곡선 방정식
     return x == r.x && y == r.y;                   // 좌표가 같은지 확인한다.
 }
 
-EllipticCurveDHE::EC_Point EllipticCurveDHE::EC_Point::operator+(const EC_Point &r) const {  // 두 좌표의 합
+KEY_EXCHANGE::EC_Point KEY_EXCHANGE::EC_Point::operator+(const EC_Point &r) const {  // 두 좌표의 합
     // y값이 mod와 같은 것을 O(항등원, 무한)
     if (r.y == mod) return *this;                            // P + O = P
     if (y == mod) return r;                                  // O + P = P
@@ -41,7 +40,7 @@ EllipticCurveDHE::EC_Point EllipticCurveDHE::EC_Point::operator+(const EC_Point 
     return {x3 < 0 ? x3 + mod : x3/*mod값이 음수라면 +mod해서 리턴*/, y3 < 0 ? y3 + mod : y3, *this}; //fucking 오타났었음 x3값을 확인해야 하는데 x값을 확인함
 }
 
-EllipticCurveDHE::EC_Point EllipticCurveDHE::EC_Point::operator*(mpz_class r) const { //P * k
+KEY_EXCHANGE::EC_Point KEY_EXCHANGE::EC_Point::operator*(mpz_class r) const { //P * k
     std::vector<bool> bits; //r을 bit 단위로 저장
     for(; r > 0; r /= 2) {
         bits.push_back(r % 2 == 1);
@@ -56,11 +55,17 @@ EllipticCurveDHE::EC_Point EllipticCurveDHE::EC_Point::operator*(mpz_class r) co
     return R;
 }
 
-EllipticCurveDHE::EC_Point operator*(const mpz_class &l, const EllipticCurveDHE::EC_Point &r) { //k * P
+KEY_EXCHANGE::EC_Point operator*(const mpz_class &l, const KEY_EXCHANGE::EC_Point &r) { //k * P
     return r * l;
 }
 
-std::ostream& operator<<(std::ostream &is, const EllipticCurveDHE::EC_Point &r) {
+std::ostream& operator<<(std::ostream &is, const KEY_EXCHANGE::EC_Point &r) {
     is << "( "<< r.x << ", " << r.y << " )";
     return is;
+}
+
+
+mpz_class KEY_EXCHANGE::DiffieHellman::set_peer_pubkey(mpz_class pub_key) {
+    K_ = UTIL::powm(pub_key, x_, p_);
+    return K_;
 }

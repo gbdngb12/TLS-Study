@@ -5,7 +5,7 @@
 #include <random>
 #include <sstream>
 
-namespace Util {
+namespace UTIL {
 
 // n보다 큰 최초의 소수를 리턴한다.
 mpz_class nextprime(mpz_class n);

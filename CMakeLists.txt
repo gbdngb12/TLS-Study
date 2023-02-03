@@ -28,5 +28,5 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Catch2::Catch2WithMain
         myutil
-        ecdhe
+        key_exchange
 )
