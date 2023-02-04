@@ -24,6 +24,7 @@ target_link_libraries(auth
         ${mygmpxx}
         ${mygmp}
         myutil
+        key_exchange
 )
 set_target_properties(auth PROPERTIES PUBLIC_HEADER "auth.h")
 

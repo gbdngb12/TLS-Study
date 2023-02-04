@@ -15,7 +15,7 @@ class EC_Field {  // y^2 = x^3 + ax + b ( mod mod ) 타원 곡선 클래스
     mpz_class mod_inv(const mpz_class &r) const;  // 나머지 역원을 구하는 함수
 };
 
-class EC_Point : EC_Field {  // EC_Field 상의 한 좌표
+class EC_Point : public EC_Field {  // EC_Field 상의 한 좌표
    public:
     EC_Point(mpz_class x, mpz_class y, const EC_Field &f);
     mpz_class x, y;                               // x, y

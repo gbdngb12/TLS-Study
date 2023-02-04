@@ -12,6 +12,14 @@ add_subdirectory("src")
 
 add_executable(${PROJECT_NAME} main.cpp)
 
+find_library(mynettle nettle REQUIRED)
+
+if(${nettle}) # or: if(${myglewlib} STREQUAL myglewlib-NOTFOUND) -> 모든 상황에서 일치하지 않으므로 사용 x
+    message(FATAL_ERROR "no nettle, sad day")
+else()
+    message(STATUS "nettle found! as ${nettle}")
+endif()
+
 target_include_directories(${PROJECT_NAME}
     PUBLIC  
         "catch2/src"
@@ -27,4 +35,6 @@ target_link_libraries(${PROJECT_NAME}
         Catch2::Catch2WithMain
         myutil
         auth
+    PUBLIC
+        ${nettle}
 )
