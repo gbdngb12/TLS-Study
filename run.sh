@@ -1,2 +1,2 @@
 #!/bin/sh
-cd build; ./catchtest
+cd build; ./test/myTLS
