@@ -12,7 +12,8 @@ option(TEST_CASE "Build with test case" ON)
 
 if(TEST_CASE)
     # Select Test Target
-    option(AES128_TEST "Test AES128" ON)
+    option(AES128_CBC_PADDING_TEST "Test AES128 CBC Padding" ON)
+    option(AES128_TEST "Test AES128" OFF)
     option(ECDSA_TEST "Test ECDSA" OFF)
     option(KEY_EXCHANGE_TEST "Test Key Exchange" OFF)
 endif()

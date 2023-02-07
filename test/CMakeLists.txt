@@ -22,6 +22,11 @@ if(KEY_EXCHANGE_TEST)
     list(APPEND EXTRA_LIBS key_exchange)
 endif()
 
+if(AES128_CBC_PADDING_TEST)
+    list(APPEND MY_TEST_LIST "aes128_cbc_padding_test.cpp")
+    list(APPEND EXTRA_LIBS key_exchange)
+endif()
+
 
 add_executable(${PROJECT_NAME} ${MY_TEST_LIST})
 
