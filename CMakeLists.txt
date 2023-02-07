@@ -11,11 +11,20 @@ project(myTLS)
 option(TEST_CASE "Build with test case" ON)
 
 if(TEST_CASE)
-    add_subdirectory("test")
+    # Select Test Target
+    option(AES128_TEST "Test AES128" OFF)
+    option(ECDSA_TEST "Test ECDSA" OFF)
+    option(KEY_EXCHANGE_TEST "Test Key Exchange" ON)
 endif()
 
 add_subdirectory("catch2")
 add_subdirectory("src")
+
+if(TEST_CASE)
+    add_subdirectory("test")
+endif()
+
+
 
 #add_executable(${PROJECT_NAME} main.cpp)
 #
