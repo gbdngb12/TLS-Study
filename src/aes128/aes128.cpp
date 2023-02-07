@@ -94,7 +94,7 @@ void AES128::AES::inv_mix_column(unsigned char *p) const {
     static const unsigned char inv_mix[4][4] = {
         {14, 11, 13, 9}, {9, 14, 11, 13}, {13, 9, 14, 11}, {11, 13, 9, 14}};
     unsigned char c[4], d, result[16];
-    for (int y = 0; y < 4; y++) {          // 행
+    for (int y = 0; y < 4; y++)
         for (int x = 0; x < 4; x++) {      // 열
             for (int i = 0; i < 4; i++) {  // 행렬 곱셈시 열 증가
                 d = p[4 * x + i];          // 원본 문자열
@@ -113,15 +113,10 @@ void AES128::AES::inv_mix_column(unsigned char *p) const {
                         c[i] = doub(doub(doub(d) ^ d) ^ d);
                         break;
                 }
-                // 최상위 비트값에 따른 처리: 최상위 비트가 1이고 ⊗ 1이 아니면
-                if ((d & 1 << 7) && (inv_mix[y][i] != 1)) {
-                    c[i] ^= 0x1b;
-                }
             }
             // 원소 하나 끝났으면 모두 xor
             result[4 * x + y] = c[0] ^ c[1] ^ c[2] ^ c[3];
         }
-    }
     memcpy(p, result, 16);
 }
 
