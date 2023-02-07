@@ -26,7 +26,16 @@
     // 32 - 19 + 1
     std::string msg = "Hello this is test";  // 18byte -> need to 14byte padding 13 13 13 13 ... 13
     for (int i = 0; i < 14; i++) {
-        msg += 13;
+        msg += 13;static const unsigned char mix[4][4] 
+		= {{2,3,1,1}, {1,2,3,1}, {1,1,2,3}, {3,1,1,2}};
+	unsigned char c[4], d, result[16];
+	for(int y=0; y<4; y++) for(int x=0; x<4; x++) {
+		for(int i=0; i<4; i++) {
+			d = p[4*x + i];
+			switch(mix[y][i]) {
+				case 1: c[i] = d; 			break;
+				case 2: c[i] = d << 1;	 	break;
+				case 3: c[i] = d
     }
     cbc.encrypt((unsigned char *)msg.data(), 32);
     cbc.decrypt((unsigned char *)msg.data(), 32);
@@ -52,6 +61,6 @@ TEST_CASE("shift_row & mix column") {
 
 	aes.mix_column(data);
 	REQUIRE(std::equal(data, data + 16, mix_comlumn_result));
-	aes.inv_mix_column(data);
+    aes.inv_mix_column(data);
 	REQUIRE(std::equal(data, data + 16, oneto16));
 }

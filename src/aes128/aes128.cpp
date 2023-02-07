@@ -52,7 +52,7 @@ void AES128::AES::inv_substitue(unsigned char *p) const {
 }
 
 unsigned char AES128::AES::doub(unsigned char c) const {  // ⊗2연산 구현
-    bool left_most_bit = (c & 1) << 7;
+    bool left_most_bit = c & (1 << 7);
     c <<= 1;
     if (left_most_bit) c ^= 0x1b;
     return c;
@@ -62,31 +62,30 @@ void AES128::AES::mix_column(unsigned char *p) const {
     static const unsigned char mix[4][4] = {
         {2, 3, 1, 1}, {1, 2, 3, 1}, {1, 1, 2, 3}, {3, 1, 1, 2}};
     unsigned char c[4], d, result[16];
-    for (int y = 0; y < 4; y++) {          // 행
-        for (int x = 0; x < 4; x++) {      // 열
-            for (int i = 0; i < 4; i++) {  // 행렬 곱셈시 열 증가
-                d = p[4 * x + i];          // 원본 문자열
-                // 배열의 값과 정의된 행렬간에 갈루아 필드 곱하기 수행
-                switch (mix[y][i] /*정의된 행렬*/) {
-                    case 1:
-                        c[i] = d;
-                        break;
-                    case 2:
-                        c[i] = d << 1;
-                        break;
-                    case 3:
-                        c[i] = d << 1 ^ d;
-                        break;
-                }
-                // 최상위 비트값에 따른 처리: 최상위 비트가 1이고 ⊗ 1이 아니면
-                if ((d & 1 << 7) && (mix[y][i] != 1)) {
-                    c[i] ^= 0x1b;
-                }
-            }
-            // 원소 하나 끝났으면 모두 xor
-            result[4 * x + y] = c[0] ^ c[1] ^ c[2] ^ c[3];
+    for (int y = 0; y < 4; y++)
+      for (int x = 0; x < 4; x++) {    // 열
+        for (int i = 0; i < 4; i++) {  // 행렬 곱셈시 열 증가
+          d = p[4 * x + i];            // 원본 문자열
+          // 배열의 값과 정의된 행렬간에 갈루아 필드 곱하기 수행
+          switch (mix[y][i] /*정의된 행렬*/) {
+            case 1:
+              c[i] = d;
+              break;
+            case 2:
+              c[i] = d << 1;
+              break;
+            case 3:
+              c[i] = d << 1 ^ d;
+              break;
+          }
+          // 최상위 비트값에 따른 처리: 최상위 비트가 1이고 ⊗ 1이 아니면
+          if ((d & (1 << 7)) && (mix[y][i] != 1)) {
+            c[i] ^= 0x1b;
+          }
         }
-    }
+        // 원소 하나 끝났으면 모두 xor
+        result[4 * x + y] = c[0] ^ c[1] ^ c[2] ^ c[3];
+      }
     memcpy(p, result, 16);
 }
 
@@ -119,7 +118,13 @@ void AES128::AES::inv_mix_column(unsigned char *p) const {
         }
     memcpy(p, result, 16);
 }
+/*
+9⊗a = 2⊗(2⊗(2⊗a))⊕a
+11⊗a = 2⊗((2⊗(2⊗a))⊕a)⊕a
+13⊗a = 2⊗(2⊗((2⊗a)⊕a))⊕a
+14⊗a = 2⊗(2⊗((2⊗a)+a)+a)
 
+*/
 void AES128::AES::key(const unsigned char *pkey) {
     memcpy(schedule_[0], pkey, 16);
     unsigned char *p = &schedule_[1][0];  // round 1
