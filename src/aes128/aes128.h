@@ -20,7 +20,7 @@ class AES {
     void inv_substitue(unsigned char *msg) const;
     void mix_column(unsigned char *msg) const;
     void inv_mix_column(unsigned char *msg) const;
-    void add_round_key(unsigned char *msg) const;
+    void add_round_key(unsigned char *msg, int round) const;
     unsigned char doub(unsigned char c) const;
     static constexpr unsigned char rcon[10][4] = {{1,}, {2,}, {4,}, {8,},
 		{0x10,}, {0x20,}, {0x40,}, {0x80,}, {0x1b,}, {0x36,}};//키 확장할때 사용

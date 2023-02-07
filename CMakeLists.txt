@@ -7,14 +7,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(myTLS)
 
-# Set Option
+# Set Test Mode Option
 option(TEST_CASE "Build with test case" ON)
 
 if(TEST_CASE)
     # Select Test Target
-    option(AES128_TEST "Test AES128" OFF)
+    option(AES128_TEST "Test AES128" ON)
     option(ECDSA_TEST "Test ECDSA" OFF)
-    option(KEY_EXCHANGE_TEST "Test Key Exchange" ON)
+    option(KEY_EXCHANGE_TEST "Test Key Exchange" OFF)
 endif()
 
 add_subdirectory("catch2")
@@ -23,23 +23,3 @@ add_subdirectory("src")
 if(TEST_CASE)
     add_subdirectory("test")
 endif()
-
-
-
-#add_executable(${PROJECT_NAME} main.cpp)
-#
-#target_include_directories(${PROJECT_NAME}
-#    PUBLIC  
-#        "catch2/src"
-#)
-#
-#target_link_directories(${PROJECT_NAME}
-#    PRIVATE
-#        "catch2/src"
-#)
-#
-#target_link_libraries(${PROJECT_NAME}
-#    PRIVATE
-#        Catch2::Catch2WithMain
-#        aes128
-#)

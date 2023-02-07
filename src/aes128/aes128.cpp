@@ -115,3 +115,40 @@ void AES128::AES::key(const unsigned char *pkey) {
 		}
 	}
 }
+
+//확장된 키와 메시지를 라운드에 맞춰 xor한다.
+//xor연산 이므로 역연산, 연산은 동일하다.
+void AES128::AES::add_round_key(unsigned char *msg, int round) const {
+    for(int i = 0; i < 16; i++) {
+        msg[i] ^= schedule_[round][i];
+    }
+}
+
+// AES 암호화 함수
+void AES128::AES::encrypt(unsigned char *m) const {
+    add_round_key(m, 0);//메시지와 0라운드 키를 xor한다. 
+    for(int round = 1; round < ROUND - 1; round++) {//1~9라운드
+        substitue(m);
+        shift_row(m);
+        mix_column(m);
+        add_round_key(m, round);
+    }
+    //마지막 라운드
+    substitue(m);
+    shift_row(m);
+    add_round_key(m, ROUND - 1);//10라운드 키와 메시지를 xor한다.
+}
+
+// AES 복호화 함수
+void AES128::AES::decrypt(unsigned char *m) const {
+    add_round_key(m, ROUND - 1);//메시지와 10라운드 키를 xor한다.
+    for(int round = ROUND - 2; round > 0; round--) {//9~1라운드
+        inv_shift_row(m);
+        inv_substitue(m);
+        add_round_key(m, round);
+        inv_mix_column(m);
+    }
+    inv_shift_row(m);
+    inv_substitue(m);
+    add_round_key(m, 0);//0라운드 키와 메시지를 xor한다.
+}

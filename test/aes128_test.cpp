@@ -27,8 +27,8 @@ unsigned char schedule[11 * 16] = {
 	0xCC, 0xC0, 0xA4, 0xFE, 0x3B, 0x31, 0x6F, 0x26
 };
 TEST_CASE("key scheduling") {
-    std::cout << "test/aes128.cpp" << std::endl;
     AES128::AES aes;
+	std::cout << "Key Scheduling Test" << std::endl;
     aes.key(schedule);//첫 16바이트만 키값으로 주어진다.
     REQUIRE(std::equal(schedule, schedule + 11 * 16, aes.schedule_[0]));
 }
