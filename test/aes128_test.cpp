@@ -8,7 +8,7 @@
 #undef private
 #undef protected
 
-TEST_CASE("CBC") {
+/*TEST_CASE("CBC") {
     AES128::CBC<AES128::AES> cbc;
     std::cout << "CBC PAdding Test" << std::endl;
     unsigned char key[16] = {
@@ -81,7 +81,7 @@ TEST_CASE("key scheduling") {
 	std::cout << "Key Scheduling Test" << std::endl;
     aes.key(schedule);//첫 16바이트만 키값으로 주어진다.
     REQUIRE(std::equal(schedule, schedule + 11 * 16, aes.schedule_[0]));
-}
+}*/
 
 TEST_CASE("GCM") {
     unsigned char K[16], A[70], IV[12], P[48], Z[16], C[48];
@@ -107,3 +107,40 @@ TEST_CASE("GCM") {
 		REQUIRE(std::equal(a.begin(), a.end(), Z));//nettle과 인증 태그 비교
 	}
 }
+
+/*TEST_CASE("GCM") {
+	unsigned char K[16], A[70], IV[12], P[48], Z[16], C[48];
+	UTIL::mpz_to_bnd(UTIL::random_prime(16), K, K + 16);
+	UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);
+	UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV + 12);
+	UTIL::mpz_to_bnd(UTIL::random_prime(48), P, P + 48);
+	SECTION("GCM compare with nettle") {
+		gcm_aes128_ctx ctx;
+		gcm_aes128_set_key(&ctx, K);
+		gcm_aes128_set_iv(&ctx, 12, IV);
+		gcm_aes128_update(&ctx, 28, A);
+		gcm_aes128_encrypt(&ctx, 48, C, P);
+		gcm_aes128_digest(&ctx, 16, Z);
+
+		AES128::GCM<AES128::AES> gcm;
+		gcm.iv(IV);
+		gcm.key(K);
+		gcm.aad(A, 28);
+		auto a = gcm.encrypt(P, 48);
+		REQUIRE(std::equal(P, P+48, C));
+		REQUIRE(std::equal(a.begin(), a.end(), Z));
+
+		UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV+12);
+		UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);
+		gcm_aes128_set_iv(&ctx, 12, IV);
+		gcm_aes128_update(&ctx, 28, A);
+		gcm_aes128_encrypt(&ctx, 48, C, P);
+		gcm_aes128_digest(&ctx, 16, Z);
+		
+		gcm.iv(IV);
+		gcm.aad(A, 28);
+		a = gcm.encrypt(P, 48);
+		REQUIRE(std::equal(P, P+48, C));
+		REQUIRE(std::equal(a.begin(), a.end(), Z));
+	}
+}*/

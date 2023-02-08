@@ -253,7 +253,7 @@ template<class Cipher>
 void AES128::GCM<Cipher>::gf_mul(unsigned char *x, unsigned char *H) {//GCM 갈루아 필드에서 mult_H 함수
     //H :   ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ
     //bit : 8  8  8  8  8  8 8  8  8  8  8  8  8  8 8  8 -> 128 bit
-    unsigned char z[16];//결과를 저장하는 임시 변수
+    unsigned char z[16] = { 0 };//결과를 저장하는 임시 변수
     for(int i = 0; i < 16; i++) {//모든 128비트 H순회
         for(int j = 0; j < 8; j++) {//H의 모든 비트 확인
             if(H[i] & 1 << (7 - j)) {//bit단위로 H를 검사한다.
