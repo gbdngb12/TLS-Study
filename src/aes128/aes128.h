@@ -1,6 +1,10 @@
 #pragma once
-#include <cstring>
 #include <cassert>
+#include <cstring>
+#include <vector>
+#include <array>
+#include "util.h"
+
 namespace AES128 {
 class AES {
    public:
@@ -126,15 +130,37 @@ class CipherMode {  // 암호화 모드 추상 클래스
    public:
     void key(const unsigned char *p);
     virtual void iv(const unsigned char *p) = 0;
+
    protected:
     Cipher cipher_;         // 암호 종류
     unsigned char iv_[16];  // iv
 };
 
-template<class Cipher> class CBC : public CipherMode<Cipher> {//CBC 모드 클래스
-	public:
-	void iv(const unsigned char *p);
-	void encrypt(unsigned char *p, int sz) const;
-	void decrypt(unsigned char *p, int sz) const;
+template <class Cipher>
+class CBC : public CipherMode<Cipher> {  // CBC 모드 클래스
+   public:
+    void iv(const unsigned char *p);
+    void encrypt(unsigned char *p, int sz) const;
+    void decrypt(unsigned char *p, int sz) const;
+};
+
+template <class Cipher>
+class GCM : public CipherMode<Cipher> {
+   public:
+    void iv(const unsigned char *p);
+    void iv(const unsigned char *p, int from, int sz);  // TLS 1.3에서는 IV를 조합해서 만들어 내므로 이를 위해 추가한 함수
+
+    void aad(unsigned char *p, int sz);  // additional auth data
+    std::array<unsigned char, 16> /*Auth Tag*/ encrypt(unsigned char *p, int sz);
+    std::array<unsigned char, 16> /*Auth Tag*/ decrypt(unsigned char *p, int sz);
+
+   protected:
+    unsigned char lenAC_[16];         // len(AuthData)의 비트수 || len(Cipher Text)의 비트수
+    std::vector<unsigned char> aad_;  // Additional Auth Data
+   private:
+    void xor_with_enc_ivNcounter(unsigned char *p, int sz, int ctr);
+    std::array<unsigned char, 16> generate_auth(unsigned char *p, int sz);
+    void doub(unsigned char* p);// GCM 갈루아 필드에서 ⊗2연산
+    void gf_mul(unsigned char *x, unsigned char *H);//GCM 갈루아 필드에서 mult_H 함수
 };
 }  // namespace AES128

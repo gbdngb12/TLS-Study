@@ -1,4 +1,11 @@
 if(AES128_TEST)
+    find_library(mynettle nettle REQUIRED)
+    if(${mynettle}) # or: if(${myglewlib} STREQUAL myglewlib-NOTFOUND) -> 모든 상황에서 일치하지 않으므로 사용 x
+        message(FATAL_ERROR "no nettle, sad day")
+    else()
+        message(STATUS "nettle found! as ${mynettle}")
+    endif()
+    list(APPEND EXTRA_LIBS ${mynettle})
     list(APPEND MY_TEST_LIST "aes128_test.cpp")
     list(APPEND EXTRA_LIBS aes128)
 endif()
@@ -20,12 +27,6 @@ endif()
 if(KEY_EXCHANGE_TEST)
     list(APPEND MY_TEST_LIST "key_exchange_test.cpp")
     list(APPEND EXTRA_LIBS key_exchange)
-endif()
-
-if(AES128_CBC_PADDING_TEST)
-    list(APPEND MY_TEST_LIST "aes128_cbc_padding_test.cpp")
-    list(APPEND EXTRA_LIBS key_exchange)
-    list(APPEND EXTRA_LIBS aes128)
 endif()
 
 

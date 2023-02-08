@@ -1,6 +1,7 @@
 #include "aes128.h"
 
 template class AES128::CBC<AES128::AES>;
+template class AES128::GCM<AES128::AES>;
 template class AES128::CipherMode<AES128::AES>;
 
 void AES128::AES::shift_row(unsigned char *p) const {
@@ -234,4 +235,115 @@ void AES128::CBC<Cipher>::decrypt(unsigned char *p/*암호문*/, int sz) const {
     for(int i = 0; i < sz - 16; i++) {
         *p++ ^= buf[i];
     }
+}
+
+template<class Cipher>
+void AES128::GCM<Cipher>::doub(unsigned char* p) {// GCM 갈루아 필드에서 ⊗2연산
+    //p는 16바이트의 최고차항이 맨 우측인 형식의 머리부분
+	bool bit1 = p[15] & 1;//최고차항의 bit가 1인지 여부
+	for(int i = 15; i > 0; i--) {
+		//우측 쉬프트 연산
+		p[i] = (p[i] >> 1) | (p[i - 1] << 7);
+	}
+	p[0] >>= 1;
+	if(bit1) p[0] ^= 0b11100001;
+}
+
+template<class Cipher>
+void AES128::GCM<Cipher>::gf_mul(unsigned char *x, unsigned char *H) {//GCM 갈루아 필드에서 mult_H 함수
+    //H :   ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ ㅁ
+    //bit : 8  8  8  8  8  8 8  8  8  8  8  8  8  8 8  8 -> 128 bit
+    unsigned char z[16];//결과를 저장하는 임시 변수
+    for(int i = 0; i < 16; i++) {//모든 128비트 H순회
+        for(int j = 0; j < 8; j++) {//H의 모든 비트 확인
+            if(H[i] & 1 << (7 - j)) {//bit단위로 H를 검사한다.
+                for(int k = 0; k < 16; k++) {
+                    z[k] ^= x[k];//z에 현재의 x 값을 더함
+                }
+            }
+            doub(x);//x, 2x, 4x, 8x ...
+        }
+    }
+    memcpy(x, z, 16);
+}
+
+template<class Cipher>
+void AES128::GCM<Cipher>::iv(const unsigned char *p) {
+    memcpy(this->iv_, p, 12);
+}
+
+template<class Cipher>
+void AES128::GCM<Cipher>::iv(const unsigned char *p, int from, int sz) {
+    memcpy(this->iv_ + from, p, sz);
+}
+
+template<class Cipher>
+void AES128::GCM<Cipher>::aad(unsigned char *p, int sz) {
+    aad_ = std::vector<unsigned char>{p, p + sz};
+    //Save len(Auth)
+    UTIL::mpz_to_bnd(aad_.size() * 8/*길이값의 비트수*/, lenAC_, lenAC_ + 8);
+    //16byte의 배수가 될때까지 Padding
+    while(aad_.size() % 16) {
+        aad_.push_back(0);
+    }
+}
+
+template<class Cipher>
+void AES128::GCM<Cipher>::xor_with_enc_ivNcounter(unsigned char *p/*xor target*/, int sz/*블록의 크기*/, int ctr/*Counter*/) {
+    unsigned char ivNcounter[16];
+    //iv || Counter
+    memcpy(ivNcounter,this->iv_, 12);//iv
+    UTIL::mpz_to_bnd(ctr, ivNcounter + 12, ivNcounter + 16);// || ctr
+    this->cipher_.encrypt(ivNcounter);//E(iv || Counter, K)
+    //p ^ Cipher Text
+    for(int i = 0; i < sz; i++) {
+        p[i] ^= ivNcounter[i];
+    }
+}
+
+template<class Cipher>
+std::array<unsigned char, 16> AES128::GCM<Cipher>::generate_auth(unsigned char *p/*암호문*/, int sz/*평문의 총 바이트수 16바이트의 배수가 되지 않아도됨*/) { //16바이트의 인증 태그 생성
+    std::array<unsigned char, 16> Auth;
+    unsigned char H[16] = { 0 };
+    this->cipher_.encrypt(H);//This is H Using mult_H
+    
+    //인증 태그 생성
+    if(!aad_.empty()) {
+        //인증 태그 전처리
+        gf_mul(&aad_[0], H);//mult_H
+        //만약 인증 데이터가 16바이트 보다 크다면 처리
+        for(int i = 0; i < aad_.size() - 16; i += 16) {
+            for(int j = 0; j < 16; j++) {
+                aad_[i + 16 + j]/*다음 인증 데이터값에 저장*/ ^= aad_[i + j]/*현재 인증 데이터*/;
+            }
+            gf_mul(&aad_[i+16]/*xor한 인증 데이터*/, H);
+        }
+        std::copy(aad_.end() - 16, aad_.end(), Auth.begin());// 마지막 데이터를 Auth에 복사함
+    }
+    
+    for(int i = 0; i < sz; i+= 16) {//모든 암호문 블록 순회
+        for(int j = 0; j < std::min(16, sz - i); j++) {// ^ Cipher Text
+            Auth[j] ^= p[i + j];
+        }
+        gf_mul(&Auth[0], H);
+    }
+
+    //len(C)의 비트수
+    UTIL::mpz_to_bnd(sz * 8, lenAC_ + 8, lenAC_ + 16);//len(A)의 비트수 || len(C)의 비트수
+    //( len(A) || len(C) ) ^ 인증 중간값
+    for(int i = 0; i < 16; i++) {
+        Auth[i] ^= lenAC_[i];
+    }
+    gf_mul(&Auth[0], H);//최종적인 인증 중간 값과 mult_H연산
+    xor_with_enc_ivNcounter(&Auth[0],16, 1);//첫번째 E(IV || 1(ctr), K) ^ 최종 직전 인증 데이터
+    return Auth;
+}
+
+template<class Cipher>
+std::array<unsigned char, 16> AES128::GCM<Cipher>::encrypt(unsigned char *p, int sz/*평문의 총 바이트수 16바이트의 배수가 되지 않아도 됨*/) {
+    //p가 가리키는 위치에 암호문을 덮어쓰고, 인증 태그를 리턴한다.
+    for(int i = 0; i < sz; i += 16) {//평문 순회
+        xor_with_enc_ivNcounter(p + i, std::min(16, sz - i), i/16 + 2 /*Counter*/);
+    }
+    return generate_auth(p/*암호문*/, sz/*평문의 총바이트수*/);
 }

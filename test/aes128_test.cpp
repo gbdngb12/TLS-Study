@@ -1,6 +1,55 @@
 #include <catch2/catch_all.hpp>
 #include <iostream>
+#include <nettle/gcm.h>
+#include "util.h"
+#define private public
+#define protected public
 #include "aes128.h"
+#undef private
+#undef protected
+
+TEST_CASE("CBC") {
+    AES128::CBC<AES128::AES> cbc;
+    std::cout << "CBC PAdding Test" << std::endl;
+    unsigned char key[16] = {
+        14, 9, 13, 11, 11, 14, 9, 13, 13, 11, 14, 9, 9, 13, 11, 14};
+    unsigned char iv[16] = {
+        1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    cbc.key(key);
+    cbc.iv(iv);
+    // 32 - 19 + 1
+    std::string msg = "Hello this is test";  // 18byte -> need to 14byte padding 13 13 13 13 ... 13
+    for (int i = 0; i < 14; i++) {
+        msg += 13;
+    }
+    cbc.encrypt((unsigned char *)msg.data(), 32);
+    cbc.decrypt((unsigned char *)msg.data(), 32);
+    for (int i = msg.back(); i >= 0; i--) {
+        msg.pop_back();  // remove padiing
+    }
+    REQUIRE(msg == "Hello this is test");
+}
+
+TEST_CASE("shift_row & mix column") {
+	std::cout << "shift_row & mix column Test" << std::endl;
+    AES128::AES aes;
+	unsigned char data[16], oneto16[16];
+	for(int i=0; i<16; i++) data[i] = oneto16[i] = i+1;
+	unsigned char shift_row_result[16] 
+		= { 1, 6, 0x0b, 0x10, 5, 0xa, 0xf, 4, 9, 0xe, 3, 8, 0xd, 2, 7, 0xc };
+	unsigned char mix_comlumn_result[16]
+		= {3, 4, 9, 0xa, 0xf, 8, 0x15, 0x1e, 0xb, 0xc, 1, 2, 0x17, 0x10, 0x2d, 0x36};
+
+	aes.shift_row(data);
+	REQUIRE(std::equal(data, data + 16, shift_row_result));
+	aes.inv_shift_row(data);
+	REQUIRE(std::equal(data, data + 16, oneto16));
+
+	aes.mix_column(data);
+	REQUIRE(std::equal(data, data + 16, mix_comlumn_result));
+    aes.inv_mix_column(data);
+	REQUIRE(std::equal(data, data + 16, oneto16));
+}
 
 unsigned char schedule[11 * 16] = {
 	0x54, 0x68, 0x61, 0x74, 0x73, 0x20, 0x6D, 0x79, 
@@ -26,9 +75,35 @@ unsigned char schedule[11 * 16] = {
 	0x28, 0xFD, 0xDE, 0xF8, 0x6D, 0xA4, 0x24, 0x4A,
 	0xCC, 0xC0, 0xA4, 0xFE, 0x3B, 0x31, 0x6F, 0x26
 };
+
 TEST_CASE("key scheduling") {
     AES128::AES aes;
 	std::cout << "Key Scheduling Test" << std::endl;
     aes.key(schedule);//첫 16바이트만 키값으로 주어진다.
     REQUIRE(std::equal(schedule, schedule + 11 * 16, aes.schedule_[0]));
+}
+
+TEST_CASE("GCM") {
+    unsigned char K[16], A[70], IV[12], P[48], Z[16], C[48];
+    UTIL::mpz_to_bnd(UTIL::random_prime(16), K, K + 16);    // key
+    UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);    // Auth Data
+    UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV + 12);  // iv
+    UTIL::mpz_to_bnd(UTIL::random_prime(48), P, P + 48);    // plain text
+	SECTION("GCM compare with nettle") {
+		gcm_aes128_ctx ctx;//nettle 라이브러리로 암호화
+		gcm_aes128_set_key(&ctx, K);
+		gcm_aes128_set_iv(&ctx, 12, IV);
+		gcm_aes128_update(&ctx, 28, A);//A : Auth Data
+		gcm_aes128_encrypt(&ctx, 48, C, P);//C: Cipher text
+		gcm_aes128_digest(&ctx, 16, Z); //Z : Auth Tag
+
+		AES128::GCM<AES128::AES> gcm;//직접 만든 클래스로 암호화
+		gcm.iv(IV);
+		gcm.key(K);
+		gcm.aad(A, 28);
+		auto a = gcm.encrypt(P, 48); //P의 위치에 암호문을 덮어쓴다.
+
+		REQUIRE(std::equal(P, P+48, C)); //nettle암호문과 비고
+		REQUIRE(std::equal(a.begin(), a.end(), Z));//nettle과 인증 태그 비교
+	}
 }
