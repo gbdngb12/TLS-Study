@@ -5,7 +5,10 @@ if(AES128_TEST)
     else()
         message(STATUS "nettle found! as ${mynettle}")
     endif()
+
+    find_package(OpenSSL REQUIRED)
     list(APPEND EXTRA_LIBS ${mynettle})
+    #list(APPEND EXTRA_LIBS ${OPENSSL_INCLUDE_DIR})
     list(APPEND MY_TEST_LIST "aes128_test.cpp")
     list(APPEND EXTRA_LIBS aes128)
 endif()
@@ -35,6 +38,7 @@ add_executable(${PROJECT_NAME} ${MY_TEST_LIST})
 target_include_directories(${PROJECT_NAME}
     PUBLIC
         "catch2/src"
+        ${OPENSSL_INCLUDE_DIR}
 )
 
 target_link_directories(${PROJECT_NAME}
@@ -46,4 +50,5 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Catch2::Catch2WithMain
         ${EXTRA_LIBS}
+        ${OPENSSL_LIBRARIES}
 )

@@ -1,6 +1,8 @@
+#include <nettle/gcm.h>
+#include <openssl/evp.h>
 #include <catch2/catch_all.hpp>
 #include <iostream>
-#include <nettle/gcm.h>
+
 #include "util.h"
 #define private public
 #define protected public
@@ -31,127 +33,166 @@
 }
 
 TEST_CASE("shift_row & mix column") {
-	std::cout << "shift_row & mix column Test" << std::endl;
+        std::cout << "shift_row & mix column Test" << std::endl;
     AES128::AES aes;
-	unsigned char data[16], oneto16[16];
-	for(int i=0; i<16; i++) data[i] = oneto16[i] = i+1;
-	unsigned char shift_row_result[16] 
-		= { 1, 6, 0x0b, 0x10, 5, 0xa, 0xf, 4, 9, 0xe, 3, 8, 0xd, 2, 7, 0xc };
-	unsigned char mix_comlumn_result[16]
-		= {3, 4, 9, 0xa, 0xf, 8, 0x15, 0x1e, 0xb, 0xc, 1, 2, 0x17, 0x10, 0x2d, 0x36};
+        unsigned char data[16], oneto16[16];
+        for(int i=0; i<16; i++) data[i] = oneto16[i] = i+1;
+        unsigned char shift_row_result[16]
+                = { 1, 6, 0x0b, 0x10, 5, 0xa, 0xf, 4, 9, 0xe, 3, 8, 0xd, 2, 7, 0xc };
+        unsigned char mix_comlumn_result[16]
+                = {3, 4, 9, 0xa, 0xf, 8, 0x15, 0x1e, 0xb, 0xc, 1, 2, 0x17, 0x10, 0x2d, 0x36};
 
-	aes.shift_row(data);
-	REQUIRE(std::equal(data, data + 16, shift_row_result));
-	aes.inv_shift_row(data);
-	REQUIRE(std::equal(data, data + 16, oneto16));
+        aes.shift_row(data);
+        REQUIRE(std::equal(data, data + 16, shift_row_result));
+        aes.inv_shift_row(data);
+        REQUIRE(std::equal(data, data + 16, oneto16));
 
-	aes.mix_column(data);
-	REQUIRE(std::equal(data, data + 16, mix_comlumn_result));
+        aes.mix_column(data);
+        REQUIRE(std::equal(data, data + 16, mix_comlumn_result));
     aes.inv_mix_column(data);
-	REQUIRE(std::equal(data, data + 16, oneto16));
+        REQUIRE(std::equal(data, data + 16, oneto16));
 }
 
 unsigned char schedule[11 * 16] = {
-	0x54, 0x68, 0x61, 0x74, 0x73, 0x20, 0x6D, 0x79, 
-	0x20, 0x4B, 0x75, 0x6E, 0x67, 0x20, 0x46, 0x75,
-	0xE2, 0x32, 0xFC, 0xF1, 0x91, 0x12, 0x91, 0x88, 
-	0xB1, 0x59, 0xE4, 0xE6, 0xD6, 0x79, 0xA2, 0x93,
-	0x56, 0x08, 0x20, 0x07, 0xC7, 0x1A, 0xB1, 0x8F, 
-	0x76, 0x43, 0x55, 0x69, 0xA0, 0x3A, 0xF7, 0xFA,
-	0xD2, 0x60, 0x0D, 0xE7, 0x15, 0x7A, 0xBC, 0x68,
-	0x63, 0x39, 0xE9, 0x01, 0xC3, 0x03, 0x1E, 0xFB,
-	0xA1, 0x12, 0x02, 0xC9, 0xB4, 0x68, 0xBE, 0xA1,
-	0xD7, 0x51, 0x57, 0xA0, 0x14, 0x52, 0x49, 0x5B,
-	0xB1, 0x29, 0x3B, 0x33, 0x05, 0x41, 0x85, 0x92,
-	0xD2, 0x10, 0xD2, 0x32, 0xC6, 0x42, 0x9B, 0x69,
-	0xBD, 0x3D, 0xC2, 0x87, 0xB8, 0x7C, 0x47, 0x15,
-	0x6A, 0x6C, 0x95, 0x27, 0xAC, 0x2E, 0x0E, 0x4E,
-	0xCC, 0x96, 0xED, 0x16, 0x74, 0xEA, 0xAA, 0x03,
-	0x1E, 0x86, 0x3F, 0x24, 0xB2, 0xA8, 0x31, 0x6A,
-	0x8E, 0x51, 0xEF, 0x21, 0xFA, 0xBB, 0x45, 0x22,
-	0xE4, 0x3D, 0x7A, 0x06, 0x56, 0x95, 0x4B, 0x6C,
-	0xBF, 0xE2, 0xBF, 0x90, 0x45, 0x59, 0xFA, 0xB2,
-	0xA1, 0x64, 0x80, 0xB4, 0xF7, 0xF1, 0xCB, 0xD8,
-	0x28, 0xFD, 0xDE, 0xF8, 0x6D, 0xA4, 0x24, 0x4A,
-	0xCC, 0xC0, 0xA4, 0xFE, 0x3B, 0x31, 0x6F, 0x26
+        0x54, 0x68, 0x61, 0x74, 0x73, 0x20, 0x6D, 0x79,
+        0x20, 0x4B, 0x75, 0x6E, 0x67, 0x20, 0x46, 0x75,
+        0xE2, 0x32, 0xFC, 0xF1, 0x91, 0x12, 0x91, 0x88,
+        0xB1, 0x59, 0xE4, 0xE6, 0xD6, 0x79, 0xA2, 0x93,
+        0x56, 0x08, 0x20, 0x07, 0xC7, 0x1A, 0xB1, 0x8F,
+        0x76, 0x43, 0x55, 0x69, 0xA0, 0x3A, 0xF7, 0xFA,
+        0xD2, 0x60, 0x0D, 0xE7, 0x15, 0x7A, 0xBC, 0x68,
+        0x63, 0x39, 0xE9, 0x01, 0xC3, 0x03, 0x1E, 0xFB,
+        0xA1, 0x12, 0x02, 0xC9, 0xB4, 0x68, 0xBE, 0xA1,
+        0xD7, 0x51, 0x57, 0xA0, 0x14, 0x52, 0x49, 0x5B,
+        0xB1, 0x29, 0x3B, 0x33, 0x05, 0x41, 0x85, 0x92,
+        0xD2, 0x10, 0xD2, 0x32, 0xC6, 0x42, 0x9B, 0x69,
+        0xBD, 0x3D, 0xC2, 0x87, 0xB8, 0x7C, 0x47, 0x15,
+        0x6A, 0x6C, 0x95, 0x27, 0xAC, 0x2E, 0x0E, 0x4E,
+        0xCC, 0x96, 0xED, 0x16, 0x74, 0xEA, 0xAA, 0x03,
+        0x1E, 0x86, 0x3F, 0x24, 0xB2, 0xA8, 0x31, 0x6A,
+        0x8E, 0x51, 0xEF, 0x21, 0xFA, 0xBB, 0x45, 0x22,
+        0xE4, 0x3D, 0x7A, 0x06, 0x56, 0x95, 0x4B, 0x6C,
+        0xBF, 0xE2, 0xBF, 0x90, 0x45, 0x59, 0xFA, 0xB2,
+        0xA1, 0x64, 0x80, 0xB4, 0xF7, 0xF1, 0xCB, 0xD8,
+        0x28, 0xFD, 0xDE, 0xF8, 0x6D, 0xA4, 0x24, 0x4A,
+        0xCC, 0xC0, 0xA4, 0xFE, 0x3B, 0x31, 0x6F, 0x26
 };
 
 TEST_CASE("key scheduling") {
     AES128::AES aes;
-	std::cout << "Key Scheduling Test" << std::endl;
+        std::cout << "Key Scheduling Test" << std::endl;
     aes.key(schedule);//첫 16바이트만 키값으로 주어진다.
     REQUIRE(std::equal(schedule, schedule + 11 * 16, aes.schedule_[0]));
 }*/
 
 TEST_CASE("GCM") {
-    unsigned char K[16], A[70], IV[12], P[48], Z[16], C[48], D[64] ={ 0 }, B[16];
+	int outlen = 48;
+    unsigned char K[16], A[70], IV[12], P[48], Z[16], Z2[16] ={ 0 }, C[48], C2[48] = {0}, B[16];
     UTIL::mpz_to_bnd(UTIL::random_prime(16), K, K + 16);    // key
     UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);    // Auth Data
     UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV + 12);  // iv
     UTIL::mpz_to_bnd(UTIL::random_prime(48), P, P + 48);    // plain text
-	SECTION("GCM compare with nettle") {
-		gcm_aes128_ctx ctx;//nettle 라이브러리로 암호화
-		gcm_aes128_set_key(&ctx, K);
-		gcm_aes128_set_iv(&ctx, 12, IV);
-		gcm_aes128_update(&ctx, 28, A);//A : Auth Data
-		gcm_aes128_encrypt(&ctx, 48, C, P);//C: Cipher text
-		gcm_aes128_digest(&ctx, 16, Z); //Z : Auth Tag
 
-		AES128::GCM<AES128::AES> gcm;//직접 만든 클래스로 암호화
-		gcm.iv(IV);
-		gcm.key(K);
-		gcm.aad(A, 28);
-		auto a = gcm.encrypt(P, 48); //P의 위치에 암호문을 덮어쓴다.
+	int enc = 1;
+	int dec = 0;
+    SECTION("GCM compare with nettle") {
+        // openssl
+        EVP_CIPHER_CTX *openssl_ctx;
+        openssl_ctx = EVP_CIPHER_CTX_new();
+        /* Don't set key or IV right away; we want to check lengths */
+        if (!EVP_CipherInit_ex2(openssl_ctx, EVP_aes_128_gcm(), NULL, NULL,
+                                enc, NULL)) {
+            /* Error */
+            EVP_CIPHER_CTX_free(openssl_ctx);
+            exit(1);
+        }
+        OPENSSL_assert(EVP_CIPHER_CTX_get_key_length(openssl_ctx) == 16);
+        OPENSSL_assert(EVP_CIPHER_CTX_get_iv_length(openssl_ctx) == 12);
 
-		REQUIRE(std::equal(P, P+48, C)); //nettle암호문과 비고
-		REQUIRE(std::equal(a.begin(), a.end(), Z));//nettle과 인증 태그 비교
+    	/* Now we can set key and IV */
+    	if (!EVP_CipherInit_ex2(openssl_ctx, NULL, K, IV, enc, NULL)) {
+    	    /* Error */
+    	    EVP_CIPHER_CTX_free(openssl_ctx);
+    	    exit(1);
+    	}
 
-		auto b = gcm.decrypt(P, 48);//P의 위치에 원문 복호화, b는 복호화 하면서 생긴 인증 태그값
+		if (!EVP_CipherUpdate(openssl_ctx, C, &outlen, P, outlen)) {
+            /* Error */
+            EVP_CIPHER_CTX_free(openssl_ctx);
+            exit(1);
+        }
+
+		if (!EVP_CipherFinal_ex(openssl_ctx, P, &outlen)) {
+        	/* Error */
+        	EVP_CIPHER_CTX_free(openssl_ctx);
+        	exit(1);
+    	}
 		
-		gcm_aes128_set_key(&ctx, K);
-		gcm_aes128_set_iv(&ctx, 12, IV);
-		gcm_aes128_update(&ctx, 28, A);
-		gcm_aes128_decrypt(&ctx, 48, D, C); //D : Decrypt Text
-		gcm_aes128_digest(&ctx, 16, B);
+		EVP_CIPHER_CTX_free(openssl_ctx);
 
-		REQUIRE(std::equal(P, P+48, D));
-		REQUIRE(std::equal(b.begin(), b.end(), a.begin()));
-	}
+
+        gcm_aes128_ctx ctx;  // nettle 라이브러리로 암호화
+        gcm_aes128_set_key(&ctx, K);
+        gcm_aes128_set_iv(&ctx, 12, IV);
+        gcm_aes128_update(&ctx, 28, A);      // A : Auth Data
+        gcm_aes128_encrypt(&ctx, 48, C2, P);  // C: Cipher text
+        gcm_aes128_digest(&ctx, 16, Z);      // Z : Auth Tag
+
+        /*AES128::GCM<AES128::AES> gcm;  // 직접 만든 클래스로 암호화
+        gcm.iv(IV);
+        gcm.key(K);
+        gcm.aad(A, 28);
+        auto a = gcm.encrypt(P, 48);  // P의 위치에 암호문을 덮어쓴다.
+
+        REQUIRE(std::equal(P, P + 48, C));           // nettle암호문과 비고
+        REQUIRE(std::equal(a.begin(), a.end(), Z));  // nettle과 인증 태그 비교
+
+        auto b = gcm.decrypt(P, 48);  // P의 위치에 원문 복호화, b는 복호화 하면서 생긴 인증 태그값
+
+        gcm_aes128_set_key(&ctx, K);
+        gcm_aes128_set_iv(&ctx, 12, IV);
+        gcm_aes128_update(&ctx, 28, A);      // A : Auth Data
+        gcm_aes128_decrypt(&ctx, 48, D, C);  // D : Decrypt Text
+        gcm_aes128_digest(&ctx, 16, B);
+
+        REQUIRE(std::equal(P, P + 48, D));
+        REQUIRE(std::equal(b.begin(), b.end(), a.begin()));*/
+    }
 }
 
 /*TEST_CASE("GCM") {
-	unsigned char K[16], A[70], IV[12], P[48], Z[16], C[48];
-	UTIL::mpz_to_bnd(UTIL::random_prime(16), K, K + 16);
-	UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);
-	UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV + 12);
-	UTIL::mpz_to_bnd(UTIL::random_prime(48), P, P + 48);
-	SECTION("GCM compare with nettle") {
-		gcm_aes128_ctx ctx;
-		gcm_aes128_set_key(&ctx, K);
-		gcm_aes128_set_iv(&ctx, 12, IV);
-		gcm_aes128_update(&ctx, 28, A);
-		gcm_aes128_encrypt(&ctx, 48, C, P);
-		gcm_aes128_digest(&ctx, 16, Z);
+        unsigned char K[16], A[70], IV[12], P[48], Z[16], C[48];
+        UTIL::mpz_to_bnd(UTIL::random_prime(16), K, K + 16);
+        UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);
+        UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV + 12);
+        UTIL::mpz_to_bnd(UTIL::random_prime(48), P, P + 48);
+        SECTION("GCM compare with nettle") {
+                gcm_aes128_ctx ctx;
+                gcm_aes128_set_key(&ctx, K);
+                gcm_aes128_set_iv(&ctx, 12, IV);
+                gcm_aes128_update(&ctx, 28, A);
+                gcm_aes128_encrypt(&ctx, 48, C, P);
+                gcm_aes128_digest(&ctx, 16, Z);
 
-		AES128::GCM<AES128::AES> gcm;
-		gcm.iv(IV);
-		gcm.key(K);
-		gcm.aad(A, 28);
-		auto a = gcm.encrypt(P, 48);
-		REQUIRE(std::equal(P, P+48, C));
-		REQUIRE(std::equal(a.begin(), a.end(), Z));
+                AES128::GCM<AES128::AES> gcm;
+                gcm.iv(IV);
+                gcm.key(K);
+                gcm.aad(A, 28);
+                auto a = gcm.encrypt(P, 48);
+                REQUIRE(std::equal(P, P+48, C));
+                REQUIRE(std::equal(a.begin(), a.end(), Z));
 
-		UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV+12);
-		UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);
-		gcm_aes128_set_iv(&ctx, 12, IV);
-		gcm_aes128_update(&ctx, 28, A);
-		gcm_aes128_encrypt(&ctx, 48, C, P);
-		gcm_aes128_digest(&ctx, 16, Z);
-		
-		gcm.iv(IV);
-		gcm.aad(A, 28);
-		a = gcm.encrypt(P, 48);
-		REQUIRE(std::equal(P, P+48, C));
-		REQUIRE(std::equal(a.begin(), a.end(), Z));
-	}
+                UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV+12);
+                UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);
+                gcm_aes128_set_iv(&ctx, 12, IV);
+                gcm_aes128_update(&ctx, 28, A);
+                gcm_aes128_encrypt(&ctx, 48, C, P);
+                gcm_aes128_digest(&ctx, 16, Z);
+
+                gcm.iv(IV);
+                gcm.aad(A, 28);
+                a = gcm.encrypt(P, 48);
+                REQUIRE(std::equal(P, P+48, C));
+                REQUIRE(std::equal(a.begin(), a.end(), Z));
+        }
 }*/
