@@ -1,8 +1,9 @@
 #pragma once
+#include <array>
 #include <cassert>
 #include <cstring>
 #include <vector>
-#include <array>
+
 #include "util.h"
 
 namespace AES128 {
@@ -151,6 +152,15 @@ class GCM : public CipherMode<Cipher> {
     void iv(const unsigned char *p, int from, int sz);  // TLS 1.3에서는 IV를 조합해서 만들어 내므로 이를 위해 추가한 함수
 
     void aad(unsigned char *p, int sz);  // additional auth data
+
+    /*!
+     * @function    encrypt
+     * @abstract    AES<Encrypt Mode> GCM Mode 암호화 수행
+     * @discussion  AES<암호화 모드 클래스> GCM Mode로 암호화를 수행 하는함수
+     * @param       p   암호화할 평문
+     * @param       sz  평문의 총 바이트 수
+     * @result      암호화 후 생긴 16바이트 인증 태그
+     */
     std::array<unsigned char, 16> /*Auth Tag*/ encrypt(unsigned char *p, int sz);
     std::array<unsigned char, 16> /*Auth Tag*/ decrypt(unsigned char *p, int sz);
 
@@ -160,7 +170,7 @@ class GCM : public CipherMode<Cipher> {
    private:
     void xor_with_enc_ivNcounter(unsigned char *p, int sz, int ctr);
     std::array<unsigned char, 16> generate_auth(unsigned char *p, int sz);
-    void doub(unsigned char* p);// GCM 갈루아 필드에서 ⊗2연산
-    void gf_mul(unsigned char *x, unsigned char *H);//GCM 갈루아 필드에서 mult_H 함수
+    void doub(unsigned char *p);                      // GCM 갈루아 필드에서 ⊗2연산
+    void gf_mul(unsigned char *x, unsigned char *H);  // GCM 갈루아 필드에서 mult_H 함수
 };
 }  // namespace AES128

@@ -347,3 +347,13 @@ std::array<unsigned char, 16> AES128::GCM<Cipher>::encrypt(unsigned char *p, int
     }
     return generate_auth(p/*암호문*/, sz/*평문의 총바이트수*/);
 }
+
+template<class Cipher>
+std::array<unsigned char, 16> /*Auth Tag*/ AES128::GCM<Cipher>::decrypt(unsigned char *p, int sz) {
+    //복호화 시에는 인증 태그 생성이 먼저
+    auto a = generate_auth(p, sz);
+    for(int i = 0; i < sz; i += 16) {
+        xor_with_enc_ivNcounter(p + i, std::min(16, sz - i), i/16 + 2);
+    }
+    return a;
+}

@@ -84,7 +84,7 @@ TEST_CASE("key scheduling") {
 }*/
 
 TEST_CASE("GCM") {
-    unsigned char K[16], A[70], IV[12], P[48], Z[16], C[48];
+    unsigned char K[16], A[70], IV[12], P[48], Z[16], C[48], D[64] ={ 0 }, B[16];
     UTIL::mpz_to_bnd(UTIL::random_prime(16), K, K + 16);    // key
     UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);    // Auth Data
     UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV + 12);  // iv
@@ -105,6 +105,17 @@ TEST_CASE("GCM") {
 
 		REQUIRE(std::equal(P, P+48, C)); //nettle암호문과 비고
 		REQUIRE(std::equal(a.begin(), a.end(), Z));//nettle과 인증 태그 비교
+
+		auto b = gcm.decrypt(P, 48);//P의 위치에 원문 복호화, b는 복호화 하면서 생긴 인증 태그값
+		
+		gcm_aes128_set_key(&ctx, K);
+		gcm_aes128_set_iv(&ctx, 12, IV);
+		gcm_aes128_update(&ctx, 28, A);
+		gcm_aes128_decrypt(&ctx, 48, D, C); //D : Decrypt Text
+		gcm_aes128_digest(&ctx, 16, B);
+
+		REQUIRE(std::equal(P, P+48, D));
+		REQUIRE(std::equal(b.begin(), b.end(), a.begin()));
 	}
 }
 
