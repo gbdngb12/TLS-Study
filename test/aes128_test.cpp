@@ -84,12 +84,14 @@ TEST_CASE("key scheduling") {
     aes.key(schedule);//첫 16바이트만 키값으로 주어진다.
     REQUIRE(std::equal(schedule, schedule + 11 * 16, aes.schedule_[0]));
 }*/
-
+//20230210 해야할 일 :
+//openssl을 이용한 gcm_aes128 암호화, 복호화 태그 테스트 함수 구현
+//내가 만든 gcm 복호화 태그와 값 비교
 TEST_CASE("GCM") {
     int plaintext_len = 48;
     int len;
     int ciphertext_len;
-    unsigned char K[16], A[70], IV[12], P[48], Z[16], Z2[16] ={ 0 }, C[48], C2[48] = {0}, B[16];
+    unsigned char K[16], A[70], IV[12], P[48], Z[16], Z2[16] ={ 0 }, C[48], C2[48] = {0}, B[16], Z3[16] ={ 0 };
     UTIL::mpz_to_bnd(UTIL::random_prime(16), K, K + 16);    // key
     UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);    // Auth Data
     UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV + 12);  // iv
@@ -131,6 +133,7 @@ TEST_CASE("GCM") {
     	    exit(1);
         }
 
+        //set aad
         if(!EVP_EncryptUpdate(openssl_ctx, NULL, &len, A, 28)) {
             /* Error */
     	    EVP_CIPHER_CTX_free(openssl_ctx);
@@ -168,9 +171,61 @@ TEST_CASE("GCM") {
         gcm_aes128_encrypt(&ctx, 48, C2, P);  // C: Cipher text
         gcm_aes128_digest(&ctx, 16, Z2);      // Z : Auth Tag
 
-        
 
-        /*AES128::GCM<AES128::AES> gcm;  // 직접 만든 클래스로 암호화
+        int plaintext_len2 = 48;
+        int len2;
+        int ciphertext_len2;
+
+        EVP_CIPHER_CTX *decrypt_ctx;
+        if(decrypt_ctx = EVP_CIPHER_CTX_new()) {
+            /* Error */
+        	EVP_CIPHER_CTX_free(decrypt_ctx);
+        	exit(1);
+        }
+
+        if(!EVP_DecryptInit_ex(decrypt_ctx, EVP_aes_128_gcm(), NULL, NULL, NULL)) {
+            /* Error */
+        	EVP_CIPHER_CTX_free(decrypt_ctx);
+        	exit(1);
+        }
+        if(!EVP_CIPHER_CTX_ctrl(decrypt_ctx, EVP_CTRL_GCM_SET_IVLEN, 16, NULL)){
+            /* Error */
+        	EVP_CIPHER_CTX_free(decrypt_ctx);
+        	exit(1);
+        }
+
+        /* Initialise key and IV */
+        if (!EVP_DecryptInit_ex(decrypt_ctx, NULL, NULL, K, IV)) {
+                /* Error */
+                EVP_CIPHER_CTX_free(decrypt_ctx);
+                exit(1);
+        }
+
+        if(!EVP_EncryptUpdate(decrypt_ctx, NULL, &len, A, 28)) {
+            /* Error */
+    	    EVP_CIPHER_CTX_free(decrypt_ctx);
+    	    exit(1);
+        }
+
+        /* Set expected tag value. Works in OpenSSL 1.0.1d and later */
+        if(!EVP_CIPHER_CTX_ctrl(decrypt_ctx, EVP_CTRL_GCM_SET_TAG, 16, Z/*tag*/)) {
+            /* Error */
+    	    EVP_CIPHER_CTX_free(decrypt_ctx);
+    	    exit(1);
+        }
+
+        if(!EVP_DecryptUpdate(decrypt_ctx, NULL, &len, B/*aad*/, 16/*aad_len*/)) {
+            /* Error */
+    	    EVP_CIPHER_CTX_free(decrypt_ctx);
+    	    exit(1);
+        }
+
+
+
+
+
+
+        AES128::GCM<AES128::AES> gcm;  // 직접 만든 클래스로 암호화
         gcm.iv(IV);
         gcm.key(K);
         gcm.aad(A, 28);
@@ -181,14 +236,14 @@ TEST_CASE("GCM") {
 
         auto b = gcm.decrypt(P, 48);  // P의 위치에 원문 복호화, b는 복호화 하면서 생긴 인증 태그값
 
-        gcm_aes128_set_key(&ctx, K);
-        gcm_aes128_set_iv(&ctx, 12, IV);
-        gcm_aes128_update(&ctx, 28, A);      // A : Auth Data
-        gcm_aes128_decrypt(&ctx, 48, D, C);  // D : Decrypt Text
-        gcm_aes128_digest(&ctx, 16, B);
+        //gcm_aes128_set_key(&ctx, K);
+        //gcm_aes128_set_iv(&ctx, 12, IV);
+        //gcm_aes128_update(&ctx, 28, A);      // A : Auth Data
+        //gcm_aes128_decrypt(&ctx, 48, D, C);  // D : Decrypt Text
+        //gcm_aes128_digest(&ctx, 16, B);
 
-        REQUIRE(std::equal(P, P + 48, D));
-        REQUIRE(std::equal(b.begin(), b.end(), a.begin()));*/
+        //REQUIRE(std::equal(P, P + 48, D));
+        //REQUIRE(std::equal(b.begin(), b.end(), a.begin()));*/
     }
 }
 
