@@ -86,7 +86,9 @@ TEST_CASE("key scheduling") {
 }*/
 
 TEST_CASE("GCM") {
-	int outlen = 48;
+    int plaintext_len = 48;
+    int len;
+    int ciphertext_len;
     unsigned char K[16], A[70], IV[12], P[48], Z[16], Z2[16] ={ 0 }, C[48], C2[48] = {0}, B[16];
     UTIL::mpz_to_bnd(UTIL::random_prime(16), K, K + 16);    // key
     UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);    // Auth Data
@@ -110,23 +112,51 @@ TEST_CASE("GCM") {
         OPENSSL_assert(EVP_CIPHER_CTX_get_iv_length(openssl_ctx) == 12);
 
     	/* Now we can set key and IV */
-    	if (!EVP_CipherInit_ex2(openssl_ctx, NULL, K, IV, enc, NULL)) {
+    	if (!EVP_EncryptInit_ex(openssl_ctx, EVP_aes_128_gcm(), NULL, NULL, NULL)) {
     	    /* Error */
     	    EVP_CIPHER_CTX_free(openssl_ctx);
     	    exit(1);
     	}
 
-		if (!EVP_CipherUpdate(openssl_ctx, C, &outlen, P, outlen)) {
+        if(!EVP_CIPHER_CTX_ctrl(openssl_ctx, EVP_CTRL_GCM_SET_IVLEN, 12, NULL)) {
+            /* Error */
+    	    EVP_CIPHER_CTX_free(openssl_ctx);
+    	    exit(1);
+        }
+
+         /* Initialise key and IV */
+        if(!EVP_EncryptInit_ex(openssl_ctx, NULL, NULL, K, IV)) {
+            /* Error */
+    	    EVP_CIPHER_CTX_free(openssl_ctx);
+    	    exit(1);
+        }
+
+        if(!EVP_EncryptUpdate(openssl_ctx, NULL, &len, A, 28)) {
+            /* Error */
+    	    EVP_CIPHER_CTX_free(openssl_ctx);
+    	    exit(1);
+        }
+
+		if (!EVP_CipherUpdate(openssl_ctx, C, &len, P, plaintext_len)) {
             /* Error */
             EVP_CIPHER_CTX_free(openssl_ctx);
             exit(1);
         }
+        ciphertext_len = len;
 
-		if (!EVP_CipherFinal_ex(openssl_ctx, P, &outlen)) {
+		if (!EVP_CipherFinal_ex(openssl_ctx, C + len, &len)) {
         	/* Error */
         	EVP_CIPHER_CTX_free(openssl_ctx);
         	exit(1);
     	}
+        ciphertext_len += len;
+        /* Get the tag */
+        if(!EVP_CIPHER_CTX_ctrl(openssl_ctx, EVP_CTRL_GCM_GET_TAG, 16, Z)) {
+            /* Error */
+        	EVP_CIPHER_CTX_free(openssl_ctx);
+        	exit(1);
+        }
+        ciphertext_len += 16;
 		
 		EVP_CIPHER_CTX_free(openssl_ctx);
 
@@ -136,7 +166,9 @@ TEST_CASE("GCM") {
         gcm_aes128_set_iv(&ctx, 12, IV);
         gcm_aes128_update(&ctx, 28, A);      // A : Auth Data
         gcm_aes128_encrypt(&ctx, 48, C2, P);  // C: Cipher text
-        gcm_aes128_digest(&ctx, 16, Z);      // Z : Auth Tag
+        gcm_aes128_digest(&ctx, 16, Z2);      // Z : Auth Tag
+
+        
 
         /*AES128::GCM<AES128::AES> gcm;  // 직접 만든 클래스로 암호화
         gcm.iv(IV);
