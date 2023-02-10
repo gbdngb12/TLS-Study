@@ -1,5 +1,6 @@
 #include <nettle/gcm.h>
 #include <openssl/evp.h>
+
 #include <catch2/catch_all.hpp>
 #include <iostream>
 
@@ -84,202 +85,233 @@ TEST_CASE("key scheduling") {
     aes.key(schedule);//첫 16바이트만 키값으로 주어진다.
     REQUIRE(std::equal(schedule, schedule + 11 * 16, aes.schedule_[0]));
 }*/
-//20230210 해야할 일 :
-//openssl을 이용한 gcm_aes128 암호화, 복호화 태그 테스트 함수 구현
-//내가 만든 gcm 복호화 태그와 값 비교
-TEST_CASE("GCM") {
-    int plaintext_len = 48;
+// 20230210 해야할 일 :
+// openssl을 이용한 gcm_aes128 암호화, 복호화 태그 테스트 함수 구현
+// 내가 만든 gcm 복호화 태그와 값 비교
+
+bool openssl_encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
+                     unsigned char *iv, unsigned char *aad, int aad_len,
+                     unsigned char *ciphertext, unsigned char *tag) {
+    EVP_CIPHER_CTX *ctx;
+
     int len;
     int ciphertext_len;
-    unsigned char K[16], A[70], IV[12], P[48], Z[16], Z2[16] ={ 0 }, C[48], C2[48] = {0}, B[16], Z3[16] ={ 0 };
-    UTIL::mpz_to_bnd(UTIL::random_prime(16), K, K + 16);    // key
-    UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);    // Auth Data
-    UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV + 12);  // iv
-    UTIL::mpz_to_bnd(UTIL::random_prime(48), P, P + 48);    // plain text
 
-	int enc = 1;
-	int dec = 0;
-    SECTION("GCM compare with nettle") {
-        // openssl
-        EVP_CIPHER_CTX *openssl_ctx;
-        openssl_ctx = EVP_CIPHER_CTX_new();
-        /* Don't set key or IV right away; we want to check lengths */
-        if (!EVP_CipherInit_ex2(openssl_ctx, EVP_aes_128_gcm(), NULL, NULL,
-                                enc, NULL)) {
-            /* Error */
-            EVP_CIPHER_CTX_free(openssl_ctx);
-            exit(1);
-        }
-        OPENSSL_assert(EVP_CIPHER_CTX_get_key_length(openssl_ctx) == 16);
-        OPENSSL_assert(EVP_CIPHER_CTX_get_iv_length(openssl_ctx) == 12);
-
-    	/* Now we can set key and IV */
-    	if (!EVP_EncryptInit_ex(openssl_ctx, EVP_aes_128_gcm(), NULL, NULL, NULL)) {
-    	    /* Error */
-    	    EVP_CIPHER_CTX_free(openssl_ctx);
-    	    exit(1);
-    	}
-
-        if(!EVP_CIPHER_CTX_ctrl(openssl_ctx, EVP_CTRL_GCM_SET_IVLEN, 12, NULL)) {
-            /* Error */
-    	    EVP_CIPHER_CTX_free(openssl_ctx);
-    	    exit(1);
-        }
-
-         /* Initialise key and IV */
-        if(!EVP_EncryptInit_ex(openssl_ctx, NULL, NULL, K, IV)) {
-            /* Error */
-    	    EVP_CIPHER_CTX_free(openssl_ctx);
-    	    exit(1);
-        }
-
-        //set aad
-        if(!EVP_EncryptUpdate(openssl_ctx, NULL, &len, A, 28)) {
-            /* Error */
-    	    EVP_CIPHER_CTX_free(openssl_ctx);
-    	    exit(1);
-        }
-
-		if (!EVP_CipherUpdate(openssl_ctx, C, &len, P, plaintext_len)) {
-            /* Error */
-            EVP_CIPHER_CTX_free(openssl_ctx);
-            exit(1);
-        }
-        ciphertext_len = len;
-
-		if (!EVP_CipherFinal_ex(openssl_ctx, C + len, &len)) {
-        	/* Error */
-        	EVP_CIPHER_CTX_free(openssl_ctx);
-        	exit(1);
-    	}
-        ciphertext_len += len;
-        /* Get the tag */
-        if(!EVP_CIPHER_CTX_ctrl(openssl_ctx, EVP_CTRL_GCM_GET_TAG, 16, Z)) {
-            /* Error */
-        	EVP_CIPHER_CTX_free(openssl_ctx);
-        	exit(1);
-        }
-        ciphertext_len += 16;
-		
-		EVP_CIPHER_CTX_free(openssl_ctx);
-
-
-        gcm_aes128_ctx ctx;  // nettle 라이브러리로 암호화
-        gcm_aes128_set_key(&ctx, K);
-        gcm_aes128_set_iv(&ctx, 12, IV);
-        gcm_aes128_update(&ctx, 28, A);      // A : Auth Data
-        gcm_aes128_encrypt(&ctx, 48, C2, P);  // C: Cipher text
-        gcm_aes128_digest(&ctx, 16, Z2);      // Z : Auth Tag
-
-
-        int plaintext_len2 = 48;
-        int len2;
-        int ciphertext_len2;
-
-        EVP_CIPHER_CTX *decrypt_ctx;
-        if(decrypt_ctx = EVP_CIPHER_CTX_new()) {
-            /* Error */
-        	EVP_CIPHER_CTX_free(decrypt_ctx);
-        	exit(1);
-        }
-
-        if(!EVP_DecryptInit_ex(decrypt_ctx, EVP_aes_128_gcm(), NULL, NULL, NULL)) {
-            /* Error */
-        	EVP_CIPHER_CTX_free(decrypt_ctx);
-        	exit(1);
-        }
-        if(!EVP_CIPHER_CTX_ctrl(decrypt_ctx, EVP_CTRL_GCM_SET_IVLEN, 16, NULL)){
-            /* Error */
-        	EVP_CIPHER_CTX_free(decrypt_ctx);
-        	exit(1);
-        }
-
-        /* Initialise key and IV */
-        if (!EVP_DecryptInit_ex(decrypt_ctx, NULL, NULL, K, IV)) {
-                /* Error */
-                EVP_CIPHER_CTX_free(decrypt_ctx);
-                exit(1);
-        }
-
-        if(!EVP_EncryptUpdate(decrypt_ctx, NULL, &len, A, 28)) {
-            /* Error */
-    	    EVP_CIPHER_CTX_free(decrypt_ctx);
-    	    exit(1);
-        }
-
-        /* Set expected tag value. Works in OpenSSL 1.0.1d and later */
-        if(!EVP_CIPHER_CTX_ctrl(decrypt_ctx, EVP_CTRL_GCM_SET_TAG, 16, Z/*tag*/)) {
-            /* Error */
-    	    EVP_CIPHER_CTX_free(decrypt_ctx);
-    	    exit(1);
-        }
-
-        if(!EVP_DecryptUpdate(decrypt_ctx, NULL, &len, B/*aad*/, 16/*aad_len*/)) {
-            /* Error */
-    	    EVP_CIPHER_CTX_free(decrypt_ctx);
-    	    exit(1);
-        }
-
-
-
-
-
-
-        AES128::GCM<AES128::AES> gcm;  // 직접 만든 클래스로 암호화
-        gcm.iv(IV);
-        gcm.key(K);
-        gcm.aad(A, 28);
-        auto a = gcm.encrypt(P, 48);  // P의 위치에 암호문을 덮어쓴다.
-
-        REQUIRE(std::equal(P, P + 48, C));           // nettle암호문과 비고
-        REQUIRE(std::equal(a.begin(), a.end(), Z));  // nettle과 인증 태그 비교
-
-        auto b = gcm.decrypt(P, 48);  // P의 위치에 원문 복호화, b는 복호화 하면서 생긴 인증 태그값
-
-        //gcm_aes128_set_key(&ctx, K);
-        //gcm_aes128_set_iv(&ctx, 12, IV);
-        //gcm_aes128_update(&ctx, 28, A);      // A : Auth Data
-        //gcm_aes128_decrypt(&ctx, 48, D, C);  // D : Decrypt Text
-        //gcm_aes128_digest(&ctx, 16, B);
-
-        //REQUIRE(std::equal(P, P + 48, D));
-        //REQUIRE(std::equal(b.begin(), b.end(), a.begin()));*/
+    /* Create and initialise the context */
+    if (!(ctx = EVP_CIPHER_CTX_new())) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
     }
+
+    /* Initialise the encryption operation. */
+    if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), NULL, NULL, NULL)) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    /* Set IV length. Not necessary if this is 12 bytes (96 bits) */
+    if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, 12 /*12bytes*/, NULL)) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+    /* Initialise key and IV */
+    if (!EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv)) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    /* set aad */
+    if (!EVP_EncryptUpdate(ctx, NULL, &len, aad, aad_len)) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    /* Provide the message to be encrypted, and obtain the ciphertext */
+    if (!EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len)) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+    ciphertext_len = len;
+
+    /* Finalise the encryption */
+    if (!EVP_EncryptFinal_ex(ctx, ciphertext + len, &len)) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+    ciphertext_len += len;
+
+    /* Get the tag */
+    if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag)) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    /* Clean up */
+    EVP_CIPHER_CTX_free(ctx);
+
+    return true;
 }
 
-/*TEST_CASE("GCM") {
-        unsigned char K[16], A[70], IV[12], P[48], Z[16], C[48];
-        UTIL::mpz_to_bnd(UTIL::random_prime(16), K, K + 16);
-        UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);
-        UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV + 12);
-        UTIL::mpz_to_bnd(UTIL::random_prime(48), P, P + 48);
-        SECTION("GCM compare with nettle") {
-                gcm_aes128_ctx ctx;
-                gcm_aes128_set_key(&ctx, K);
-                gcm_aes128_set_iv(&ctx, 12, IV);
-                gcm_aes128_update(&ctx, 28, A);
-                gcm_aes128_encrypt(&ctx, 48, C, P);
-                gcm_aes128_digest(&ctx, 16, Z);
+bool openssl_decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
+                     unsigned char *iv, unsigned char *aad, int aad_len,
+                     unsigned char *plaintext, unsigned char *tag) {
+    EVP_CIPHER_CTX *ctx;
 
-                AES128::GCM<AES128::AES> gcm;
-                gcm.iv(IV);
-                gcm.key(K);
-                gcm.aad(A, 28);
-                auto a = gcm.encrypt(P, 48);
-                REQUIRE(std::equal(P, P+48, C));
-                REQUIRE(std::equal(a.begin(), a.end(), Z));
+    int len;
 
-                UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV+12);
-                UTIL::mpz_to_bnd(UTIL::random_prime(70), A, A + 70);
-                gcm_aes128_set_iv(&ctx, 12, IV);
-                gcm_aes128_update(&ctx, 28, A);
-                gcm_aes128_encrypt(&ctx, 48, C, P);
-                gcm_aes128_digest(&ctx, 16, Z);
+    int plaintext_len;
 
-                gcm.iv(IV);
-                gcm.aad(A, 28);
-                a = gcm.encrypt(P, 48);
-                REQUIRE(std::equal(P, P+48, C));
-                REQUIRE(std::equal(a.begin(), a.end(), Z));
+    /* Create and initialise the context */
+    if (!(ctx = EVP_CIPHER_CTX_new())) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    /* Initialise the decryption operation. */
+    if (!EVP_DecryptInit_ex(ctx, EVP_aes_128_gcm(), NULL, NULL, NULL)) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    /* Set IV length. Not necessary if this is 12 bytes (96 bits) */
+    if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, 12 /*12 byte*/, NULL)) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    /* Initialise key and IV */
+    if (!EVP_DecryptInit_ex(ctx, NULL, NULL, key, iv))  {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    /* Set expected tag value. Works in OpenSSL 1.0.1d and later */
+    if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, tag)) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    /* Provide the message to be decrypted, and obtain the plaintext */
+    if (!EVP_DecryptUpdate(ctx, NULL, &len, aad, aad_len)) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+
+    /* Provide the message to be decrypted, and obtain the plaintext */
+    if (!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len)) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+    plaintext_len = len;
+
+    /* Finalise the decryption. A positive return value indicates success,
+     * anything else is a failure - the plaintext is not trustworthy.
+     */
+    if (EVP_DecryptFinal_ex(ctx, plaintext + len, &len) <= 0) {
+        /* Error */
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+    plaintext_len += len;
+
+    /* Clean up */
+    EVP_CIPHER_CTX_free(ctx);
+
+    return true;
+}
+
+TEST_CASE("GCM") {
+    unsigned char key[16], auth_data[28], IV[12], plain_text1[48], plain_text2[48], plain_text3[48], aad1[16], aad2[16],  cipher_text1[48], cipher_text2[48], cipher_text3[48];
+    UTIL::mpz_to_bnd(UTIL::random_prime(16), key, key + 16);                  // key
+    UTIL::mpz_to_bnd(UTIL::random_prime(70), auth_data, auth_data + 28);      // Auth Data
+    UTIL::mpz_to_bnd(UTIL::random_prime(12), IV, IV + 12);                    // iv
+    UTIL::mpz_to_bnd(UTIL::random_prime(48), plain_text1, plain_text1 + 48);  // plain text
+    memcpy(plain_text2, plain_text1, 48);
+    memcpy(plain_text3, plain_text1, 48);
+
+    SECTION("nettle , openssl, my class COMPARE") {
+        // nettle 라이브러리로 암호화
+        gcm_aes128_ctx ctx;
+        gcm_aes128_set_key(&ctx, key);
+        gcm_aes128_set_iv(&ctx, 12, IV);
+        gcm_aes128_update(&ctx, 28, auth_data);                   // Auth Data
+        gcm_aes128_encrypt(&ctx, 48, cipher_text1, plain_text1);  // Cipher text
+        gcm_aes128_digest(&ctx, 16, aad1);                        // aad1 : Auth Tag
+
+
+        memset(&ctx,0, sizeof(ctx));
+        memset(plain_text1, 0, 48);
+
+        unsigned char de_aad1[16];
+
+        gcm_aes128_set_key(&ctx, key);
+        gcm_aes128_set_iv(&ctx, 12, IV);
+        gcm_aes128_update(&ctx, 28, auth_data);//set auth_data
+        gcm_aes128_decrypt(&ctx, 48, plain_text1, cipher_text1);
+        gcm_aes128_digest(&ctx,16, de_aad1);
+
+        ////////////////////////////////////////////////
+
+        //openssl
+        if(!openssl_encrypt(plain_text2, 48, key, IV, auth_data, 28, cipher_text2, aad2)) {
+            std::cout<< "error" << std::endl;
+            exit(1);
         }
-}*/
+        memset(plain_text2, 0, 48);
+
+        if(!openssl_decrypt(cipher_text2, 48, key, IV, auth_data, 28, plain_text2, aad2)) {
+            std::cout<< "error" << std::endl;
+            exit(1);
+        }
+
+
+
+        AES128::GCM<AES128::AES> gcm;
+        gcm.iv(IV);
+        gcm.key(key);
+        gcm.aad(auth_data, 28);
+        auto aad3 = gcm.encrypt(plain_text3, 48);
+        memcpy(cipher_text3, plain_text3, 48);
+
+        AES128::GCM<AES128::AES> gcm2;
+        gcm2.iv(IV);
+        gcm2.key(key);
+        gcm2.aad(auth_data, 28);
+        auto de_aad3 = gcm2.decrypt(plain_text3, 48);
+
+
+        //Compare Cipher Text
+        REQUIRE(std::equal(cipher_text1, cipher_text1 + 48, cipher_text2));//nettle, openssl
+        REQUIRE(std::equal(cipher_text1, cipher_text1 + 48, cipher_text3));//nettle, my class
+        REQUIRE(std::equal(cipher_text2, cipher_text2 + 48, cipher_text3));//openssl, my class
+
+        //Compare Decrypt Text
+        REQUIRE(std::equal(plain_text1, plain_text1 + 48, plain_text2));//nettle, openssl
+        REQUIRE(std::equal(plain_text1, plain_text1 + 48, plain_text3));//nettle, my class
+        REQUIRE(std::equal(plain_text2, plain_text2 + 48, plain_text3));//openssl, my class
+
+        //생성된 Auth Tag Compare
+        REQUIRE(std::equal(aad1, aad1 + 16, aad2));//nettle, openssl
+        REQUIRE(std::equal(aad1, aad1 + 16, aad3.begin()));//nettle, my class
+        REQUIRE(std::equal(aad2, aad2 + 16, aad3.begin()));//openssl, my class
+        
+        //복호화후 Auth Tag 비교(openssl은 tag값이 정확하지 않으면 오류 발생 하므로 비교할 필요가 없다.)
+        REQUIRE(std::equal(de_aad1, de_aad1 + 16, de_aad3.begin()));//nettle, my class
+    }
+}
