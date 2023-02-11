@@ -32,13 +32,19 @@ if(KEY_EXCHANGE_TEST)
     list(APPEND EXTRA_LIBS key_exchange)
 endif()
 
+if(HASH_TEST)
+    list(APPEND MY_TEST_LIST "hash_test.cpp")
+    list(APPEND EXTRA_LIBS hash)
+    list(APPEND EXTRA_LIBS myutil)
+endif()
+
 
 add_executable(${PROJECT_NAME} ${MY_TEST_LIST})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
         "catch2/src"
-        ${OPENSSL_INCLUDE_DIR}
+        #${OPENSSL_INCLUDE_DIR}
 )
 
 target_link_directories(${PROJECT_NAME}
@@ -50,5 +56,5 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Catch2::Catch2WithMain
         ${EXTRA_LIBS}
-        ${OPENSSL_LIBRARIES}
+        #${OPENSSL_LIBRARIES}
 )
