@@ -1,6 +1,8 @@
 #include "hash.h"
 #include <cstring>
 
+template class HASH::HMAC<HASH::SHA1>;
+
 void HASH::SHA1::preprocess(std::vector<unsigned char> &v) {
     size_t sz = v.size() * 8;  // 메시지길이 비트수
     v.push_back(0x80);
@@ -72,4 +74,8 @@ void HASH::SHA1::process_chunk(unsigned char *p) {
     h[2] += c;
     h[3] += d;
     h[4] += e;
+}
+
+HASH::SHA2::SHA2() {
+    sha256_init(&sha_);
 }
