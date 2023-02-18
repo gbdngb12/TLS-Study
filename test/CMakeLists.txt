@@ -27,6 +27,11 @@ if(ECDSA_TEST)
     list(APPEND EXTRA_LIBS ${mynettle})
 endif()
 
+if(BASE64_TEST)
+    list(APPEND MY_TEST_LIST "base64_test.cpp")
+    list(APPEND EXTRA_LIBS tls)
+endif()
+
 if(KEY_EXCHANGE_TEST)
     list(APPEND MY_TEST_LIST "key_exchange_test.cpp")
     list(APPEND EXTRA_LIBS key_exchange)

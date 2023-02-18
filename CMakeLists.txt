@@ -12,10 +12,11 @@ option(TEST_CASE "Build with test case" ON)
 
 if(TEST_CASE)
     # Select Test Target
-    option(HASH_TEST "Test HASH" ON)
+    option(HASH_TEST "Test HASH" OFF)
     option(AES128_TEST "Test AES128" OFF)
     option(ECDSA_TEST "Test ECDSA" OFF)
     option(KEY_EXCHANGE_TEST "Test Key Exchange" OFF)
+    option(BASE64_TEST "Test base64" ON)
 endif()
 
 add_subdirectory("catch2")
