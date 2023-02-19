@@ -2,6 +2,7 @@ project(auth)
 
 add_library(auth auth.cpp) 
 
+find_library(myjsoncpp jsoncpp REQUIRED)
 # if you are also using the GMPXX library, you will need to link it to the library
 #find_package(GMPXX REQUIRED)
 find_library(mygmpxx gmpxx REQUIRED)
@@ -25,6 +26,7 @@ target_link_libraries(auth
         ${mygmp}
         myutil
         key_exchange
+        ${myjsoncpp}
 )
 set_target_properties(auth PROPERTIES PUBLIC_HEADER "auth.h")
 

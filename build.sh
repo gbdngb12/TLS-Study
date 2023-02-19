@@ -1,2 +1,2 @@
 #! /bin/sh
-cd build; make
+cd build; make -j 18

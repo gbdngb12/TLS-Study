@@ -29,7 +29,8 @@ endif()
 
 if(BASE64_TEST)
     list(APPEND MY_TEST_LIST "base64_test.cpp")
-    list(APPEND EXTRA_LIBS tls)
+    list(APPEND EXTRA_LIBS auth)
+    list(APPEND EXTRA_LIBS myutil)
 endif()
 
 if(KEY_EXCHANGE_TEST)

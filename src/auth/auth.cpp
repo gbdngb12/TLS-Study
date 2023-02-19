@@ -1,5 +1,5 @@
 #include "auth.h"
-
+using namespace std;
 #include <cassert>
 
 AUTH::RSA::RSA(int key_size) {
@@ -85,4 +85,110 @@ bool AUTH::ECDSA::verify(mpz_class m /*서명 메시지의 해시*/, std::pair<m
     if(P.y == this->mod) return false; //if P is O
     if((P.x - r) % this->n_ == 0) return true;// (x ≡ r mod n)
     else return false;
+}
+
+
+DER::Type DER::read_type(unsigned char c) {
+    DER::Type type;
+    type.cls = static_cast<DER::Class>((c & 0b11000000) >> 6);
+    type.pc = static_cast<DER::PC>((c & 0b00100000) >> 5);
+    type.tag = static_cast<DER::Tag>(c & 0b00011111);
+    return type;
+}
+
+int DER::read_length(std::istream& is) {
+    unsigned char c;
+    // 모든 공백을 skip하지 않고 c에 삽입
+    if (!(is >> noskipws >> c)) throw "reached eof in read_length";
+    if (c & 0b10000000) {  // 여러 바이트로 길이를 표현 하는 경우
+        vector<unsigned char> v;
+        for (int i = 0, j = c & 0b01111111 /*멀티바이트 최대값*/; i < j; i++) {
+            is >> c;
+            v.push_back(c);
+        }
+        return UTIL::bnd_to_mpz(v.begin(), v.end()).get_si();
+    } else {  // 한바이트로 길이를 표현 하는 경우
+        return c;
+    }
+}
+
+vector<unsigned char> DER::read_value(istream& is, int len) {
+    unsigned char c;
+    vector<unsigned char> v;
+    // contents length만큼 unsigned char 값으로 vector를 만든다.
+    for (int i = 0; i < len; i++) {
+        if (!(is >> noskipws >> c)) throw "reached eof in read_value";
+        v.push_back(c);
+    }
+    return v;
+}
+
+Json::Value DER::type_change(DER::Tag tag, vector<unsigned char> v) {
+    switch (tag) {
+        case DER::Tag::EOC:
+            return "eoc";
+        case DER::Tag::BOOLEAN:
+            return v[0] ? true : false;
+        case DER::Tag::INTEGER:  // return (int)bnd2mpz(v.begin(), v.end()).get_si();
+        case DER::Tag::BIT_STRING:
+        case DER::Tag::OCTET_STRING:
+        case DER::Tag::NUMERIC_STRING:
+        case DER::Tag::OBJECT_IDENTIFIER:
+        case DER::Tag::OBJECT_DESCRIPTOR: {  // 두 바이트씩 16진수로 해석 마지막에는 ':'
+            stringstream ss;
+            for (auto a : v) ss << hex << setw(2) << setfill('0') << +a << ':';
+            return ss.str();
+        }
+        case DER::Tag::NULL_TYPE:
+            return "null";
+        case DER::Tag::EXTERNAL:
+        case DER::Tag::REAL:
+            return *(float*)v.data();
+        case DER::Tag::ENUMERATED:
+        case DER::Tag::EMBEDDED_PDV:
+        case DER::Tag::RELATIVE_OID:
+
+        default: {  // strings 문자열로 해석
+            stringstream ss;
+            for (auto a : v) ss << a;
+            return ss.str();
+        }
+    }
+}
+
+Json::Value DER::read_constructed(std::istream& is, int length) {
+    // 복합적인 DER Contents중 한 부분을 읽는 함수
+    Json::Value jv;
+    int start_pos = is.tellg();
+    unsigned char c;
+    for (int i = 0, l; ((int)is.tellg() - start_pos < length) /*현재위치가 length보다 작아야하고*/ && (is >> noskipws >> c) /*null이면 안된다.*/; i++) {
+        auto type = DER::read_type(c);
+        l = DER::read_length(is);
+        jv[i] = type.pc == DER::PC::PRIMITIVE ?
+                                              /*단일 데이터라면*/ DER::type_change(type.tag, DER::read_value(is, l))
+                                              : /*복합 데이터라면 재귀 호출*/ DER::read_constructed(is, l);
+    }
+    return jv;
+}
+
+Json::Value DER::der_to_json(std::istream& is) {
+    Json::Value jv;
+    unsigned char c;
+    for (int i = 0, l; is >> noskipws >> c; i++) {
+        auto type = DER::read_type(c);
+        l = DER::read_length(is);
+        jv[i] = type.pc == DER::PC::PRIMITIVE ?
+                                              /*단일 데이터인 경우*/ DER::type_change(type.tag, DER::read_value(is, l))
+                                              : DER::read_constructed(is, l);
+    }
+    return jv;
+}
+
+std::string DER::get_certificate_core(std::istream& is) {
+    string s, r;
+    while (s != "-----BEGIN")
+        if (!(is >> s)) return "reached eof get_certificate_core";
+    getline(is, s);//여기서 CERTIFICATE-----를 읽는다.
+    for (is >> s; s != "-----END"; is >> s) r += s;//base64인코딩된 값을 읽는다.
+    return r;
 }

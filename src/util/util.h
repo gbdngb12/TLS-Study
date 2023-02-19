@@ -47,4 +47,42 @@ std::string hexprint(const char *p, const C &c) {
     return ss.str();
 }
 
+/*!
+ * @brief       DER인증서에 저장된 문자열을 mpz_class 숫자로 변환 하는 함수
+ * @param       s 문자열 숫자
+ * @result      mpz_class 숫자
+ */
+mpz_class str_to_mpz(std::string s);
 }  // namespace Util
+
+namespace BASE64 {
+    /*!
+ * @brief       6bits값을 base64 char로 치환
+ * @param       n
+ * @result      base64로 인코딩된 char
+ */
+char bits_to_char(unsigned char n);
+
+/*!
+ * @brief       base64 char값을 6bits로 복구
+ * @param       c   
+ * @result      base64 디코딩된 char
+ */
+unsigned char char_to_bits(char c);
+
+/*!
+ * @brief       base64 인코딩
+ * @param       v 인코딩할 unsigned char vector
+ * @result      base64 인코딩한 string
+ */
+std::string base64_encode(std::vector<unsigned char> v);
+
+/*!
+ * @brief       base64 디코딩
+ * @param       s 디코딩할 string
+ * @result      base64 디코딩한 unsigned char vector
+ */
+std::vector<unsigned char> base64_decode(std::string s);
+
+
+}
