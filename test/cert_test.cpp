@@ -23,19 +23,18 @@ TEST_CASE("certificate") {
     }
     std::string s = DER::get_certificate_core(f);
     auto v = BASE64::base64_decode(s);
-    std::cout << std::internal // fill between the prefix and the number
-         << std::setfill('0'); // fill with 0s
-    std::cout << "0x";
-    for(const auto &c : v) {
-        std::cout << std::hex << std::setw(2) << static_cast<int>(c);
-    }
-    //std::stringstream ss;
-
-    //for (uint8_t c : v) {
-    //    //std::cout << std::hex << std::setw(4) << 
-    //    ss << c;
+    //std::cout << std::internal // fill between the prefix and the number
+    //     << std::setfill('0'); // fill with 0s
+    //std::cout << "0x";
+    //for(const auto &c : v) {
+    //    std::cout << std::hex << std::setw(2) << static_cast<int>(c);
     //}
+    std::stringstream ss;
 
-    //auto jv = DER::der_to_json(ss);
-    //std::cout << jv;
+    for (uint8_t c : v) {
+        ss << c;
+    }
+
+    auto jv = DER::der_to_json(ss);
+    std::cout << jv[0][0][6][1];
 }

@@ -1,6 +1,7 @@
 #include "auth.h"
-using namespace std;
+
 #include <cassert>
+using namespace std;
 
 AUTH::RSA::RSA(int key_size) {
     // 랜덤한 p, q에서 K, phi, e, d를 찾아낸다.
@@ -36,12 +37,12 @@ mpz_class AUTH::RSA::sign(mpz_class m) {
     return decode(m);
 }
 
-AUTH::ECDSA::ECDSA(const EC_Point &g /*generator Point*/, mpz_class n) : EC_Point{g} {
+AUTH::ECDSA::ECDSA(const EC_Point& g /*generator Point*/, mpz_class n) : EC_Point{g} {
     this->n_ = n;
     this->nBit_ = mpz_sizeinbase(n.get_mpz_t(), 2);  // 2진수로 몇자리인지 리턴함
 }
 
-mpz_class AUTH::ECDSA::mod_inv(const mpz_class &z) const {  // mod n에대한 나머지 역원을 구함
+mpz_class AUTH::ECDSA::mod_inv(const mpz_class& z) const {  // mod n에대한 나머지 역원을 구함
     mpz_class r;
     mpz_invert(r.get_mpz_t(), z.get_mpz_t(), this->n_.get_mpz_t());
     return r;
@@ -67,26 +68,27 @@ std::pair<mpz_class, mpz_class> AUTH::ECDSA::sign(mpz_class m /*해쉬한 메시
 
 bool AUTH::ECDSA::verify(mpz_class m /*서명 메시지의 해시*/, std::pair<mpz_class, mpz_class> sig
                          /*서명 쌍*/,
-                         const EC_Point &Q /*공개키*/) const {
+                         const EC_Point& Q /*공개키*/) const {
     // ECDSA 서명 검증 알고리즘
     auto [r, s] = sig;
-    for(auto a : {r, s}) {
-        if(a < 1 || a >= this->n_) {
-        //서명 쌍은 반드시 0이면안되고, mod n을 했으므로 n보다 크거나 같으면 안된다.
+    for (auto a : {r, s}) {
+        if (a < 1 || a >= this->n_) {
+            // 서명 쌍은 반드시 0이면안되고, mod n을 했으므로 n보다 크거나 같으면 안된다.
             return false;
         }
     }
 
-    int mBit = mpz_sizeinbase(m.get_mpz_t(), 2);//서명 메시지의 해시비트
-    mpz_class z = m >> std::max(mBit - nBit_, 0);//해시값이 크면 끝값을 버린다.
+    int mBit = mpz_sizeinbase(m.get_mpz_t(), 2);   // 서명 메시지의 해시비트
+    mpz_class z = m >> std::max(mBit - nBit_, 0);  // 해시값이 크면 끝값을 버린다.
     mpz_class u = (z * mod_inv(s)) % this->n_;
     mpz_class v = (r * mod_inv(s)) % this->n_;
-    EC_Point P = u * *this + v * Q; //P = uG + vQ
-    if(P.y == this->mod) return false; //if P is O
-    if((P.x - r) % this->n_ == 0) return true;// (x ≡ r mod n)
-    else return false;
+    EC_Point P = u * *this + v * Q;      // P = uG + vQ
+    if (P.y == this->mod) return false;  // if P is O
+    if ((P.x - r) % this->n_ == 0)
+        return true;  // (x ≡ r mod n)
+    else
+        return false;
 }
-
 
 DER::Type DER::read_type(unsigned char c) {
     DER::Type type;
@@ -188,7 +190,27 @@ std::string DER::get_certificate_core(std::istream& is) {
     string s, r;
     while (s != "-----BEGIN")
         if (!(is >> s)) return "reached eof get_certificate_core";
-    getline(is, s);//여기서 CERTIFICATE-----를 읽는다.
-    for (is >> s; s != "-----END"; is >> s) r += s;//base64인코딩된 값을 읽는다.
+    getline(is, s);                                  // 여기서 CERTIFICATE-----를 읽는다.
+    for (is >> s; s != "-----END"; is >> s) r += s;  // base64인코딩된 값을 읽는다.
     return r;
+}
+
+std::array<mpz_class, 2> DER::process_bitstring(std::string s) {
+    stringstream ss, ss2;
+    char c;
+    ss << s;
+    ss >> setw(2) >> s >> c;  // c는 16진수 ':'을 받아들임
+    while (ss >> setw(2) >> s >> c /*':'를 버림*/) {
+        c = stoi(s, nullptr, 16);  // 숫자 문자열을 16진수로 변환해 c에 저장
+        ss2 << c;
+    }
+    // ss2 : 0x00 30 82 01 0a 02 82 01 01 00 c0 95 08 e1 57 41 f2 71 6d b7 d2 45 41 27 01 65 c6 45 ....
+    auto jv = DER::der_to_json(ss2);
+    return { UTIL::str_to_mpz(jv[0][0].asString())/*K*/, UTIL::str_to_mpz(jv[0][1].asString()) /*e*/ };
+}
+
+std::array<mpz_class, 3> DER::get_pubkeys(const Json::Value& jv) {
+    auto [a, b] = DER::process_bitstring(jv[0][0][6][1].asString());
+    auto c = UTIL::str_to_mpz(jv[0][2].asString());  // Signature
+    return {a, b, c};                                // K, e, Sign
 }

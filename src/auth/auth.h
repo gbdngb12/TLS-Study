@@ -5,7 +5,7 @@
 #include <istream>
 #include <vector>
 #include <iomanip>
-
+#include <array>
 #include <utility>
 
 #include "key_exchange.h"
@@ -144,5 +144,18 @@ Json::Value der_to_json(std::istream& is);
  */
 std::string get_certificate_core(std::istream& is);
 
+/*!
+ * @brief       jv[0][0][6][1](TBS Certificate)을 처리해 공개키 e, K를 반환 하는 함수
+ * @param       s   TBS Certificate 문자열
+ * @result      공개키 e, K 배열
+ */
+std::array<mpz_class, 2> process_bitstring(std::string s);
+
+/*!
+ * @brief       DER Json Value로부터 공개키 K, e, Sign을 반환 하는 함수
+ * @param       jv   DER Json Value
+ * @result      공개키 K,e, Sign 배열
+ */
+std::array<mpz_class, 3> get_pubkeys(const Json::Value& jv);
 
 }  // namespace BER

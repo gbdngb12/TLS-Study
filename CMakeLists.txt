@@ -16,7 +16,7 @@ if(TEST_CASE)
     option(AES128_TEST "Test AES128" OFF)
     option(ECDSA_TEST "Test ECDSA" OFF)
     option(KEY_EXCHANGE_TEST "Test Key Exchange" OFF)
-    option(BASE64_TEST "Test base64" ON)
+    option(CERT_TEST "Test Certificate" ON)
 endif()
 
 add_subdirectory("catch2")
