@@ -160,15 +160,15 @@ class PRF {  // H is Hash Function
 
         for (auto A = hmac_.hash(seed.begin(), seed.end());    // A(1) = HMAC(secret, seed)
              r.size() < n;                                     // n바이트 보다 작게
-             A = hmac_.hash(A.begin(), A.end()), v.clear()) { // A(i) = HMAC(secret, A(i - 1))
-            v.insert(v.end(), A.begin(), A.end());//A(1)
-            v.insert(v.end(), seed.begin(), seed.end());//v = A(1) + seed
+             A = hmac_.hash(A.begin(), A.end()), v.clear()) {  // A(i) = HMAC(secret, A(i - 1))
+            v.insert(v.end(), A.begin(), A.end());             // A(1)
+            v.insert(v.end(), seed.begin(), seed.end());       // v = A(1) + seed
             auto h = hmac_.hash(v.begin(), v.end());
-            r.insert(r.end(), h.begin(), h.end());// r = h(secret, A(1) + seed) + h(secret, A(2) + seed) + ... +
+            r.insert(r.end(), h.begin(), h.end());  // r = h(secret, A(1) + seed) + h(secret, A(2) + seed) + ... +
         }
-        //크기가 작다면 0 padding
-        //크기가 크다면 자름
-        r.resize(n);//리턴할 벡터 크기 n바이트로 조절
+        // 크기가 작다면 0 padding
+        // 크기가 크다면 자름
+        r.resize(n);  // 리턴할 벡터 크기 n바이트로 조절
         return r;
     }
 

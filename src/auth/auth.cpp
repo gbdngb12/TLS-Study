@@ -189,7 +189,7 @@ Json::Value DER::der_to_json(std::istream& is) {
 std::string DER::get_certificate_core(std::istream& is) {
     string s, r;
     while (s != "-----BEGIN")
-        if (!(is >> s)) return "reached eof get_certificate_core";
+        if (!(is >> s)) return r;
     getline(is, s);                                  // 여기서 CERTIFICATE-----를 읽는다.
     for (is >> s; s != "-----END"; is >> s) r += s;  // base64인코딩된 값을 읽는다.
     return r;
