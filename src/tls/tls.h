@@ -102,7 +102,7 @@ class TLS {
 
     /*!
     @brief 암호화된 TLS Record를 생성 한다.
-    @param s 암호화 되지 않은 TLS Record의 String
+    @param s 암호화할 문자열 String
     @param type TLS Type default -> 0x17 : Encrypted Data
     @return <TLS.Content_type, HandShake.type>
     */

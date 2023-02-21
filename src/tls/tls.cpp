@@ -406,14 +406,132 @@ string TLS::TLS<SV>::client_key_exchange(string &&s) {
         accumulate(s);
         H *p = (H *)s.data();
         AUTH::ECDSA::EC_Point Y{UTIL::bnd_to_mpz(p->x, p->x + 32), UTIL::bnd_to_mpz(p->y, p->y + 32), secp256r1_};
-        derive_keys((Y * prv_key_).x);//클라이언트와 값이 똑같을것이다. Y * prv_key의 좌표는 같기 때문에
+        derive_keys((Y * prv_key_).x);  // 클라이언트와 값이 똑같을것이다. Y * prv_key의 좌표는 같기 때문에
         return "";
-    } else {//클라이언트에서는 자신의 공개키 전송
+    } else {  // 클라이언트에서는 자신의 공개키 전송
         r.h2.handshake_type = 16;
         r.h1.set_length(sizeof(H) - sizeof(TLS_header));
         r.h2.set_length(sizeof(H) - sizeof(TLS_header) - sizeof(HandShake_header));
-        UTIL::mpz_to_bnd(P_.x, r.x, r.x + 32);// 클라이언트의 공개키값을 저장한다.
+        UTIL::mpz_to_bnd(P_.x, r.x, r.x + 32);  // 클라이언트의 공개키값을 저장한다.
         UTIL::mpz_to_bnd(P_.y, r.y, r.y + 32);
         return accumulate(struct_to_str(r));
     }
+}
+
+template <bool SV>
+string TLS::TLS<SV>::change_cipher_spec(string &&s) {
+    struct {
+        TLS_header h1;
+        uint8_t spec = 1;
+    } r;
+    r.h1.content_type = CHANGE_CIPHER_SPEC;
+    r.h1.set_length(1);
+    return s == "" ?
+                   /*송신이라면*/ struct_to_str(r)
+                   :
+                   /*수신이라면*/ (get_content_type(s).first /*TLS.content_type*/ == CHANGE_CIPHER_SPEC ? ""
+                                                                                                        : alert(2, 10));
+}
+
+template <bool SV>
+optional<string> TLS::TLS<SV>::decode(string &&s) {
+    /**
+     * 레코드 메시지의 구조
+     */
+    struct H {
+        TLS_header h1;
+        uint8_t iv[8];
+        unsigned char m[];
+    } *p = (H *)s.data();
+    /**
+     * 인증 태그를 위한 부가정보
+     */
+    struct {
+        uint8_t seq[8];
+        TLS_header h1;
+    } header_for_mac;
+
+    if (int type = get_content_type(s).first; type != HANDSHAKE && type != APPLICATION_DATA)
+        return {};                                                                 // error
+    UTIL::bnd_to_mpz(dec_seq_num_++, header_for_mac.seq, header_for_mac.seq + 8);  // 순서 번호를 넣고 증가시킨다.
+    header_for_mac.h1 = p->h1;
+    int msg_len = p->h1.get_length() - sizeof(H::iv) - 16 /*tag length*/;
+    header_for_mac.h1.set_length(msg_len);
+    uint8_t *aad = (uint8_t *)&header_for_mac;
+    // 상대쪽 정보로 복호화
+    aes_[!SV].aad(aad, sizeof(header_for_mac));
+    aes_[!SV].iv(p->iv, 4, 8);  // IV값의 뒷부부은 salt값으로 이미 저장됨
+    auto auth = aes_[!SV].decrypt(p->m, msg_len);
+    // 인증 태그 확인
+    if (equal(auth.begin(), auth.end(), p->m + msg_len)) {
+        return string{p->m, p->m + msg_len};
+    } else {
+        return {};  // 인증태그 확인 실패
+    }
+}
+
+template <bool SV>
+string TLS::TLS<SV>::encode(string &&s, int type) {
+    /**
+     * 레코드 메시지 구조
+     */
+    struct {
+        TLS_header h1;
+        uint8_t iv[8];
+    } header_to_send;
+    /**
+     * 인증 태그를 위한 부가정보
+     */
+    struct {
+        uint8_t seq[8];
+        TLS_header h1;
+    } header_for_mac;
+    header_for_mac.h1.content_type = header_to_send.h1.content_type = type;
+
+    UTIL::mpz_to_bnd(enc_seq_num_++, header_for_mac.seq, header_for_mac.seq + 8);
+    const size_t chunk_size = (1 << 14) - 64;  // 하나의 패킷에 허용할 최대 길이
+    int len = min(s.size(), chunk_size);
+    header_for_mac.h1.set_length(len);
+    string frag = s.substr(0, len);  // 문자 잘라버림
+
+    UTIL::mpz_to_bnd(UTIL::random_prime(8), header_to_send.iv, header_to_send.iv + 8);  // IV값 랜덤 생성
+    aes_[SV].iv(header_to_send.iv, 4, 8);
+    uint8_t *aad = (uint8_t *)&header_for_mac;
+    aes_[SV].aad(aad, sizeof(header_for_mac));
+    auto tag = aes_[SV].encrypt(reinterpret_cast<unsigned char *>(&frag[0]), frag.size());  // 잘라낸 부분만 암호화
+    frag += string(tag.begin(), tag.end());                                                 // 인증 태그 첨부
+    header_to_send.h1.set_length(sizeof(header_to_send.iv) + frag.size());
+
+    string s2 = struct_to_str(header_to_send) + frag /*암호 + 인증 태그*/;
+    // chunk_size만큼 앞부분 잘라내고 뒷부분 다시 암호화(이렇게 생긴 결과값은 TLS Header와 AES IV, 암호메시지, 인증태그 모두를 포함한다.
+    if (s.size() > chunk_size) s2 += encode(s.substr(chunk_size));
+    return s2;
+}
+
+template <bool SV>
+string TLS::TLS<SV>::finished(string &&s) {
+    HASH::PRF<HASH::SHA2> prf;
+    HASH::SHA2 sha;
+    prf.secret(master_secret_.begin(), master_secret_.end());
+    auto h = sha.hash(accumulated_handshakes_.cbegin(), accumulated_handshakes_.cend());
+    prf.seed(h.begin(), h.end());
+    const char *label[2] = { "client finished", "server finished"};
+    prf.label(label[s == "" ? SV : !SV]);
+    auto v = prf.expand_n_byte(12);
+    std::cout<< "finished" << std::endl;
+    for(const auto& c: v) {
+        std::cout << c;
+    }
+    std::endl;
+
+    HandShake_header hh;
+    hh.handshake_type = FINISHED;
+    hh.set_length(12);
+
+    strng msg = struct_to_str(hh) + string{v.begin(), v.end()};
+    accumulated_handshakes_ += msg;
+
+    if(s == "") return encode(move(msg), HANDSHAKE);//메시지를 보내는 경우
+    else if(decode(move(s)) != msg) return alert(2, 51);//메시지를 받는경우
+    else return "";
 }
