@@ -206,11 +206,28 @@ std::array<mpz_class, 2> DER::process_bitstring(std::string s) {
     }
     // ss2 : 0x00 30 82 01 0a 02 82 01 01 00 c0 95 08 e1 57 41 f2 71 6d b7 d2 45 41 27 01 65 c6 45 ....
     auto jv = DER::der_to_json(ss2);
-    return { UTIL::str_to_mpz(jv[0][0].asString())/*K*/, UTIL::str_to_mpz(jv[0][1].asString()) /*e*/ };
+    return {UTIL::str_to_mpz(jv[0][0].asString()) /*K*/, UTIL::str_to_mpz(jv[0][1].asString()) /*e*/};
 }
 
 std::array<mpz_class, 3> DER::get_pubkeys(const Json::Value& jv) {
     auto [a, b] = DER::process_bitstring(jv[0][0][6][1].asString());
     auto c = UTIL::str_to_mpz(jv[0][2].asString());  // Signature
     return {a, b, c};                                // K, e, Sign
+}
+
+std::array<mpz_class, 3> get_keys(std::istream& is)  // is key.pem
+{
+    return get_keys(pem_to_json(is));
+    // return {str2mpz(jv[0][1].asString()), str2mpz(jv[0][2].asString()), str2mpz(jv[0][3].asString())};
+}
+
+std::array<mpz_class, 3> get_keys(const Json::Value& jv) {
+    return {UTIL::str_to_mpz(jv[0][1].asString())/*K*/, UTIL::str_to_mpz(jv[0][2].asString())/*e*/, UTIL::str_to_mpz(jv[0][3].asString())/*d*/};
+}
+
+Json::Value pem_to_json(istream& is) {
+	auto v = BASE64::base64_decode(DER::get_certificate_core(is));
+	stringstream ss;
+	for(auto c : v) ss << c;
+	return DER::der_to_json(ss);
 }

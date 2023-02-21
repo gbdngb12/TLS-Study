@@ -51,6 +51,11 @@ if(HASH_TEST)
     list(APPEND EXTRA_LIBS myutil)
 endif()
 
+if(TLS_TEST)
+    list(APPEND MY_TEST_LIST "tls_test.cpp")
+    list(APPEND EXTRA_LIBS tls)
+endif()
+
 
 add_executable(${PROJECT_NAME} ${MY_TEST_LIST})
 
