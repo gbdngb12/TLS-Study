@@ -4,15 +4,87 @@
 #include <string>
 #include <utility>
 #include <vector>
-
+#include <fstream>
+#include <deque>
+#include <algorithm>
 #include "aes128.h"  //암호 알고리즘
 #include "auth.h"    //인증 알고리즘
 #include "hash.h"    //해쉬 알고리즘
 #include "util.h"
 
 namespace TLS {
+const bool SERVER = true, CLIENT = false;
+const int CHANGE_CIPHER_SPEC = 0x14, ALERT = 0x15, HANDSHAKE = 0x16, APPLICATION_DATA = 0x17;
+const int HELLO_REQUEST = 0x00, CLIENT_HELLO = 0x01, SERVER_HELLO = 0x02, CERTIFICATE = 0x0b, SERVER_KEY_EXCHANGE = 0x0c, CERTIFICATE_REQUEST = 0x0d, SERVER_DONE = 0x0e, CERTIFICATE_VERIFY = 0x0f, CLIENT_KEY_EXCHANGE = 0x10, FINISHED = 0x14;
+#pragma pack(1)
+/**
+ * TLS Header 구조체입니다.
+ */
+typedef struct TLS_header {
+    uint8_t content_type = 0x16;       /** Change Cipher Spec, Alert, HandShake, Encrypted Application Data */
+    uint8_t version[2] = {0x03, 0x03}; /** TLS 1.2 */
+    uint8_t length[2] = {0, 4};        /** TLS Header를 제외한 Packet의 길이 */
+    /**
+     * @brief TLS Header 구조체에 길이를 설정하는 함수
+     * @param k TLS Header를 제외한 Pakcet의 길이
+     */
+    void set_length(int k) {
+        length[0] = k / 0x100;
+        length[1] = k % 0x100;
+    }  // 멤버함수의 크기는 무시된다.
+    /**
+     * @brief TLS Header 구조체에 설정된 길이를 가져오는 함수
+     * @return TLS Header 를 제외한 Pakcet의 길이
+     */
+    int get_length() {
+        return length[0] * 0x100 + length[1];
+    }  // 멤버함수의 크기는 무시된다.
+} TLS_header;
+
+/**
+ * TLS HandShake Header 구조체 입니다.
+ */
+typedef struct HandShake_header {
+    uint8_t handshake_type;        /** */
+    uint8_t length[3] = {0, 0, 0}; /** */
+    /**
+     * @brief HandShake Header 구조체에 크기를 설정하는 함수
+     * @param k HandShake Header의 크기를 제외한 TLS Packet의 길이
+     */
+    void set_length(int k) {
+        length[0] = k / 0x10000;
+        length[1] = (k % 0x10000) / 0x100;
+        length[2] = k % 0x100;
+    }
+    /**
+     * @brief HandShake Header 구조체에 설정된 길이를 가져오는 함수
+     * @return Handshake Header의 길이를 제외한 TLS Packet의 길이
+     */
+    int get_length() {
+        return length[0] * 0x10000 + length[1] * 0x100 + length[2];
+    }
+} HandShake_header;
+
+/**
+ * Hello Message Header의 공통부분
+ */
+typedef struct Hello_header {
+    uint8_t version[2] = { 0x03, 0x03 }; /** TLS 1.2 */
+    uint8_t random[32]; /** Client, Server Random*/
+    uint8_t session_id_length = 32; /** 세션 아이디 길이*/
+    uint8_t session_id[32]; /** 세션 아이디*/
+} Hello_header;
+
+
+#pragma pack()
 template <bool SV = true>
 class TLS {
+    /**
+     * @brief TLS Class 생성자, 서버라면 rsa키를 이용해 비밀키 공개키 값을 설정하고 인증서 메시지를 생성한다.
+    */
+    TLS();
+    TLS_header h;
+
    public:
     /*!
     @brief TLS Header의 content_type, HandShake Header의 HandShake Type을 가져온다.
@@ -24,7 +96,7 @@ class TLS {
     /*!
     @brief 암호화된 TLS Recored를 복호화한다.
     @param s 암호화된 TLS Header Struct 의 String
-    @return 성공시 복호화된 string 반환, 실패시 has_value() -> false
+    @return 성공시 각종 헤더를 제외한 복호화된 string 반환, 실패시 has_value() -> false
     */
     std::optional<std::string> decode(std::string &&s = "");
 
@@ -106,6 +178,7 @@ class TLS {
     @return 생성한 alert메시지의 String
     */
     std::string alert(uint8_t level, uint8_t desc);
+    
 
    protected:
     AES128::GCM<AES128::AES> aes_[2];  // 0 : client, 1 : server
@@ -131,21 +204,33 @@ class TLS {
     @return TLS Header를 포함한 Packet String
     */
     std::string accumulate(const std::string &s);  // TLS Header를 포함한 Packet을
-    static std::string certificate_;               // RSA 인증서 저장
-    static AUTH::RSA rsa_;                         // 인증서의 공개키 값 저장
-
    private:
+
+    std::string certificate_;               /** RSA 인증서 저장*/
+    AUTH::RSA rsa_;                         /** 인증서의 공개키 값 저장*/
+
+    /**
+     * @brief 구조체를 string으로 변환하는 함수
+     * @param s 구조체 또는 클래스
+     * @return 구조체 또는 클래스의 string
+    */
+    template <class S>
+    static std::string struct_to_str(const S &s) {
+        return std::string{(const char *)&s, sizeof(s)};
+    }
     /*!
     @brief 타원곡선 좌표가 변조되지 않았음을 증명하기위해 서명을 생성한다.
     @param pub_key 타원곡선 공개키 정보
     @param sign 서명을 저장할 위치
     */
-    void generate_signature(unsigned char* pub_key, unsigned char* sign);
+    void generate_signature(unsigned char *pub_key, unsigned char *sign);
 
     /*!
     @brief premaster_secret으로부터 master_secret값을 구하고 이를 통해 키를 확장한다.
     @param premaster_secret premaster_secret값
     */
-   void derive_keys(mpz_class premaster_secret);
+    void derive_keys(mpz_class premaster_secret);
+
+    
 };
 }  // namespace TLS

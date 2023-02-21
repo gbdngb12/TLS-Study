@@ -158,4 +158,24 @@ std::array<mpz_class, 2> process_bitstring(std::string s);
  */
 std::array<mpz_class, 3> get_pubkeys(const Json::Value& jv);
 
+/**
+ * @brief RSA 키 파일(pem)을 읽어 키 stream을 반환한다.
+ * @param is key.pem 파일
+ * @return [K, e, d] 공개키 K, e 비밀키 d
+*/
+std::array<mpz_class, 3> get_keys(std::istream& is);;//is key.pem
+
+/**
+ * @brief PEM Json에서 공개키, 비밀키 쌍을 읽어 반환한다.
+ * @param jv PEM Json
+ * @return [K, e, d] 공개키 K, e 비밀키 d
+*/
+std::array<mpz_class, 3> get_keys(const Json::Value &jv);
+/**
+ * @brief PEM 인증서 파일을 읽어 Json으로 변환한다.
+ * @param is PEM 인증서 Input Stream
+ * @return PEM 인증서 Json
+*/
+Json::Value pem_to_json(std::istream& is);
 }  // namespace BER
+
