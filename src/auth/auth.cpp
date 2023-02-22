@@ -1,6 +1,5 @@
 #include "auth.h"
 
-#include <cassert>
 using namespace std;
 
 AUTH::RSA::RSA(int key_size) {
@@ -15,6 +14,13 @@ AUTH::RSA::RSA(int key_size) {
 }
 
 AUTH::RSA::RSA(mpz_class e /*공개키*/, mpz_class d /*개인키*/, mpz_class K /*공개키*/) {
+    // 인증서 혹은 메모리에서 값들을 직접 읽을때
+    this->e = e;
+    this->d = d;
+    this->K = K;
+}
+
+void AUTH::RSA::set_key(mpz_class e, mpz_class d, mpz_class K) {
     // 인증서 혹은 메모리에서 값들을 직접 읽을때
     this->e = e;
     this->d = d;
@@ -215,17 +221,19 @@ std::array<mpz_class, 3> DER::get_pubkeys(const Json::Value& jv) {
     return {a, b, c};                                // K, e, Sign
 }
 
-std::array<mpz_class, 3> get_keys(std::istream& is)  // is key.pem
+std::array<mpz_class, 3> DER::get_keys(std::istream& is)  // is key.pem
 {
-    return get_keys(pem_to_json(is));
+    return get_keys(DER::pem_to_json(is));
     // return {str2mpz(jv[0][1].asString()), str2mpz(jv[0][2].asString()), str2mpz(jv[0][3].asString())};
 }
 
-std::array<mpz_class, 3> get_keys(const Json::Value& jv) {
+std::array<mpz_class, 3> DER::get_keys(const Json::Value& jv) {
+    //std::cout << jv << std::endl;
+    //DER::process_bitstring(jv[0][2].asString());
     return {UTIL::str_to_mpz(jv[0][1].asString())/*K*/, UTIL::str_to_mpz(jv[0][2].asString())/*e*/, UTIL::str_to_mpz(jv[0][3].asString())/*d*/};
 }
 
-Json::Value pem_to_json(istream& is) {
+Json::Value DER::pem_to_json(istream& is) {
 	auto v = BASE64::base64_decode(DER::get_certificate_core(is));
 	stringstream ss;
 	for(auto c : v) ss << c;

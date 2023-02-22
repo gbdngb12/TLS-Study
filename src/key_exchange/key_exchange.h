@@ -4,7 +4,6 @@
 #include <iostream>
 #include <cassert>
 
-
 namespace KEY_EXCHANGE {
 class EC_Field {  // y^2 = x^3 + ax + b ( mod mod ) 타원 곡선 클래스
    public:

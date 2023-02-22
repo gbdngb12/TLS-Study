@@ -1,5 +1,4 @@
 #include "hash.h"
-#include <cstring>
 
 template class HASH::HMAC<HASH::SHA1>;
 
