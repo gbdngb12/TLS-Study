@@ -227,10 +227,27 @@ std::array<mpz_class, 3> DER::get_keys(std::istream& is)  // is key.pem
     // return {str2mpz(jv[0][1].asString()), str2mpz(jv[0][2].asString()), str2mpz(jv[0][3].asString())};
 }
 
+
+Json::Value test(string s) {
+    stringstream ss, ss2;
+    char c;
+    ss << s;
+    //ss >> setw(2) >> s >> c;  // c는 16진수 ':'을 받아들임
+    while (ss >> setw(2) >> s >> c /*':'를 버림*/) {
+        c = stoi(s, nullptr, 16);  // 숫자 문자열을 16진수로 변환해 c에 저장
+        ss2 << c;
+    }
+    // ss2 : 0x00 30 82 01 0a 02 82 01 01 00 c0 95 08 e1 57 41 f2 71 6d b7 d2 45 41 27 01 65 c6 45 ....
+    auto jv = DER::der_to_json(ss2);
+    return jv;
+}
 std::array<mpz_class, 3> DER::get_keys(const Json::Value& jv) {
     //std::cout << jv << std::endl;
     //DER::process_bitstring(jv[0][2].asString());
-    return {UTIL::str_to_mpz(jv[0][1].asString())/*K*/, UTIL::str_to_mpz(jv[0][2].asString())/*e*/, UTIL::str_to_mpz(jv[0][3].asString())/*d*/};
+    //std::cout << jv[0][2].asString() << std::endl;
+    auto ret = test(jv[0][2].asString());
+    //std::cout << ret<< std::endl;
+    return {UTIL::str_to_mpz(ret[0][1].asString())/*K*/, UTIL::str_to_mpz(ret[0][2].asString())/*e*/, UTIL::str_to_mpz(ret[0][3].asString())/*d*/};
 }
 
 Json::Value DER::pem_to_json(istream& is) {

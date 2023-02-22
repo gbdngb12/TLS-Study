@@ -103,9 +103,4 @@ TEST_CASE("tls") {
     }
     REQUIRE(string{"hello world"} == server.decode(client.encode("hello world")));
     REQUIRE(string{"Hello!! world"} == client.decode(server.encode("Hello!! world")));
-    
-    //TLS::FriendClass fri;
-    //REQUIRE(fri.get_rsa_k(server) == fri.get_rsa_k(client));
-
-
 }
