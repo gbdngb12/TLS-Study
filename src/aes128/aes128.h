@@ -132,7 +132,7 @@ class CipherMode {  // 암호화 모드 추상 클래스
     void key(const unsigned char *p);
     virtual void iv(const unsigned char *p) = 0;
 
-   protected:
+   //protected:
     Cipher cipher_;         // 암호 종류
     unsigned char iv_[16];  // iv
 };

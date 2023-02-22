@@ -1,4 +1,5 @@
 #pragma once
+// Code that requires the feature
 #include <arpa/inet.h>
 #include <nettle/sha2.h>
 

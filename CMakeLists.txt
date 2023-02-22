@@ -6,8 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(myTLS)
-#Add Compile Option
-#add_compile_options(-Dprivate=public)
 
 # Set Test Mode Option
 option(TEST_CASE "Build with test case" ON)

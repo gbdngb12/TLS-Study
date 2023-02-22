@@ -1,5 +1,8 @@
 #include "tls.h"
-
+#define private public
+#define protected public
+#undef private
+#undef protected
 #include <iostream>
 #include <string>
 #define CLIENT false
@@ -95,8 +98,12 @@ TEST_CASE("tls") {
     REQUIRE(equal(server.client_random_.begin(), server.client_random_.end(), client.client_random_.begin()));
     REQUIRE(equal(server.server_random_.begin(), server.server_random_.end(), client.server_random_.begin()));
     for(int i = 0; i < 2; i++) {//check key expansion
-        REQUIRE(equal(server.aes_[i].));
+        REQUIRE(equal(server.aes_[i].cipher_.schedule_[0], server.aes_[i].cipher_.schedule_[0] + 11 * 16, client.aes_[i].cipher_.schedule_[0]));
+        //REQUIRE(equal(begin(server.aes_[i].)));
     }
+    REQUIRE(string{"hello world"} == server.decode(client.encode("hello world")));
+    REQUIRE(string{"Hello!! world"} == client.decode(server.encode("Hello!! world")));
+    
     //TLS::FriendClass fri;
     //REQUIRE(fri.get_rsa_k(server) == fri.get_rsa_k(client));
 
