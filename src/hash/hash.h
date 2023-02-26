@@ -1,11 +1,14 @@
 #pragma once
+// Code that requires the feature
 #include <arpa/inet.h>
 #include <nettle/sha2.h>
 
+#include <cstring>
 #include <array>
 #include <cstdint>
 #include <valarray>
 #include <vector>
+
 
 namespace HASH {
 class SHA1 {

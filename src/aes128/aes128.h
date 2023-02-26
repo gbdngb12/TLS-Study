@@ -13,7 +13,7 @@ class AES {
     void encrypt(unsigned char *m) const;
     void decrypt(unsigned char *m) const;
 
-    // protected:
+    protected:
     static const int N = 4;                 // key size in words 4바이트가 4개
     static const int ROUND = 11;            // round
     unsigned char schedule_[ROUND][N * 4];  // 라운드수 만큼 스케쥴링 키 존재

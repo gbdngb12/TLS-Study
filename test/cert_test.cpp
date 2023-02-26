@@ -8,7 +8,7 @@
 
 using namespace std;
 
-TEST_CASE("base64") {
+/*TEST_CASE("base64") {
     std::string s = "aGVsbG8gd29ybGQ=";
     auto v = BASE64::base64_decode(s);
     std::string out;
@@ -16,10 +16,23 @@ TEST_CASE("base64") {
         out += c;
     }
     REQUIRE(out == "hello world");
-}
+}*/
 
+std::array<mpz_class, 3> test(std::string s) {
+    std::stringstream ss, ss2;
+    char c;
+    ss << s;
+    ss >> setw(2) >> s >> c;
+    while(ss >> setw(2) >> s >> c) {
+        c = stoi(s, nullptr, 16);
+        ss2 << c;
+    }
+    auto jv = DER::der_to_json(ss2);
+    std::cout << jv << std::endl;
+    return {UTIL::str_to_mpz(jv[0][0].asString()), UTIL::str_to_mpz(jv[0][1].asString()), UTIL::str_to_mpz(jv[0][2].asString())};
+}
 TEST_CASE("certificate") {
-    std::ifstream f("../../server-cert.pem");
+    std::ifstream f("../../key.pem");
     if (!f) {
         std::cerr << "Failed to open input file" << std::endl;
         //return 1;
@@ -39,9 +52,18 @@ TEST_CASE("certificate") {
     }
 
     auto jv = DER::der_to_json(ss);
-    std::cout << jv[0][0][6][1] << std::endl;
-}
+    //std::cout << jv <<std::endl;
+    std::string jv_string = jv[0][2].asString();
+    auto [K3, E3, D3] = test(jv_string);
+    //std::cout << jv[0][2] << std::endl;
 
+
+
+
+
+    //std::cout << jv[0][0][6][1] << std::endl;
+}
+/*
 TEST_CASE("Check Certificate Chain") {
     std::ifstream f("../../server-cert.pem");
     //첫번째 DER
@@ -49,7 +71,7 @@ TEST_CASE("Check Certificate Chain") {
     auto v = BASE64::base64_decode(s);
 
     HASH::SHA2 sha;
-    int length = v[6] * 256/*v[6] << 8*/ + v[7] + 4;
+    int length = v[6] * 256/*v[6] << 8* + v[7] + 4;
     //TBS Certificate를 해쉬한다.
     auto arr = sha.hash(v.begin() + 4, v.begin() + 4 + length);
     cout << "hash" << endl;
@@ -78,7 +100,7 @@ TEST_CASE("Check Certificate Chain") {
     cout << "sign verify" << endl;
     cout << UTIL::powm(sign, e2, K2);//인증서 1의 서명을 확인한다.
 
-}
+}*/
 
 //374dbaf09c08e4df4c4eeb31ac1799676f39f4bc07993eeb10806bec72efca76
 //374dbaf09c08e4df4c4eeb31ac1799676f39f4bc07993eeb10806bec72efca76

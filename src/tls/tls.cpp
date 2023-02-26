@@ -1,6 +1,5 @@
 #include "tls.h"
 
-#include <cstring>
 using namespace std;
 
 template class TLS::TLS<true>;   // server
@@ -16,7 +15,6 @@ std::string TLS::TLS<SV>::alert(uint8_t level, uint8_t desc) {
         uint8_t alert_level;
         uint8_t alert_desc;
     } h;
-#pragma pack()
     h.h1.content_type = 0x15;  // ALERT_MESSAGE
     h.alert_level = level;
     h.alert_desc = desc;
@@ -26,27 +24,25 @@ std::string TLS::TLS<SV>::alert(uint8_t level, uint8_t desc) {
 
 template <bool SV>
 int TLS::TLS<SV>::alert(string &&s) {
-#pragma pack(1)
     struct H {
         TLS_header h1;
         uint8_t alert_level;
         uint8_t alert_desc;
     } *p = (H *)s.data();
-#pragma pack()
     int level, desc;
     // alert 메시지는 암호화 되어 있을 수도 있음
     if (p->h1.get_length() == 2) {  // 암호화 되지 않음
         level = p->alert_level;
         desc = p->alert_desc;
     } else {  // 암호화된 alert 메시지인 경우
-        s = decode(s);
+        s = *decode(move(s));
         // 오류 처리 해야함
-        if (s.has_value() == false) {
-            std::cerr << "alert 메시지 복호화 오류" << std::endl;
-        } else {
-            level = static_cast<uint8_t>(s[0]);
-            desc = static_cast<uint8_t>(s[1]);
-        }
+        // if (s.has_value() == false) {
+        //    std::cerr << "alert 메시지 복호화 오류" << std::endl;
+        //} else {
+        level = static_cast<uint8_t>(s[0]);
+        desc = static_cast<uint8_t>(s[1]);
+        //}
     }
     switch (desc) {  // s reuse
         case 0:
@@ -217,10 +213,16 @@ string TLS::TLS<SV>::server_hello(string &&s) {
 template <bool SV>
 TLS::TLS<SV>::TLS() {
     if constexpr (SV) {          // Server
-        ifstream f2("key.pem");  // 비밀키 PEM 파일
-        ifstream f("cert.pem");  // 인증서 PEM 파일
+        ifstream f2("../../key.pem");  // 비밀키 PEM 파일
+        if(!f2.is_open()) {
+            std::cerr << "key.pem open error" << std::endl;
+        }
+        ifstream f("../../cert.pem");  // 인증서 PEM 파일
+        if(!f.is_open()) {
+            std::cerr << "cert.pem open error" << std::endl;
+        }
         auto [K, e, d] = DER::get_keys(f2);
-        this->rsa_{K, e, d};
+        this->rsa_.set_key(e, d, K);
         std::vector<unsigned char> r;
         // 인코딩된 DER 값을 계속 읽는다.
         for (string s; (s = DER::get_certificate_core(f)) != "" /*더이상 인코딩된 DER이 존재하지 않을때*/;) {
@@ -231,11 +233,12 @@ TLS::TLS<SV>::TLS() {
             r.insert(r.end(), v.begin(), v.end());             // 인증서n 삽입
         }
         vector<uint8_t> v = {HANDSHAKE /*TLS Content Type*/, /*TLS Version*/ 3, 3, /*TLS.length*/ 0, 0, /*Handshake Type*/ CERTIFICATE, /*HandShake.length*/ 0, 0, 0, /*총 인증서 길이*/ 0, 0, 0};
-        UTIL::mpz_to_bnd(r.size(), v.end() - 3. v.end());                                                          // 전체 인증서 길이 삽입
+        UTIL::mpz_to_bnd(r.size(), v.end() - 3, v.end());                                                          // 전체 인증서 길이 삽입
         UTIL::mpz_to_bnd(r.size() + 3 /*총 인증서 길이[3]*/, v.end() - 6, v.end() - 3);                            // HandShake Header Length 값
         UTIL::mpz_to_bnd(r.size() + 7 /*총 인증서 길이[3] + HandShake Header[4]*/, v.begin() + 3, v.begin() + 5);  // TLS Header Length 값
         r.insert(r.begin(), v.begin(), v.end());                                                                   // TLS Header + HandShake Header + Total Cert Length + Cert1_length + Cert[] + ...
-        this->certificate_{r.begin(), r.end()};
+        // this->certificate_{r.begin(), r.end()};
+        this->certificate_.assign(r.begin(), r.end());
     }
 }
 
@@ -245,33 +248,34 @@ string TLS::TLS<SV>::server_certificate(string &&s) {
         return accumulate(certificate_);  // 서버라면 이미 생성한 Certificate 메시지 리턴 및 누적
     else {                                // 클라이언트라면 DER로 전송 받은 인증서 Parsing
         if (get_content_type(s) != pair{HANDSHAKE, CERTIFICATE}) {
-            /**
-             * @todo 인증서 체인이 있는지 확인후, 다음 인증서의 공개키와 서명을 얻고, 다음 인증서의 공개키로 첫번째 인증서의 서명을 확인한다.
-             */
-            accumulate(s);
-            struct H {
-                TLS_header h1;
-                HandShake_header h2;
-                uint8_t certificate_length[2][3];  // 전체인증서 길이, 인증서 1의길이
-                unsigned char certificate[];       // 첫번째 인증서
-            } *p = (H *)s.data();
-            stringstream ss;
-            uint8_t *q = p->certificate_length[1];                                         // 인증서1의 길이
-            for (int i = 0, j = *q * 0x10000 + *(q + 1) * 0x100 + *(q + 2); i < j; i++) {  // 인증서1을 ss에 저장
-                ss << noskipws << p->certificate[i];
-            }
-            Json::Value jv;
-            try {  // DER을 Parsing하는 과정에서 예외가 발생 할 수 있다.
-                jv = DER::der_to_json(ss);
-            } catch (const char *e) {
-                cerr << "certificate error : " << e << '\n';
-                return alert(2, 44);  // fatal, certificate revoked
-            }
-            auto [K, e, sign] = DER::get_pubkeys(jv);
-            rsa_.K = K;  // 공개키 저장
-            rsa_.e = e;
-            return "";
+            return alert(2, 10);
         }
+        /**
+         * @todo 인증서 체인이 있는지 확인후, 다음 인증서의 공개키와 서명을 얻고, 다음 인증서의 공개키로 첫번째 인증서의 서명을 확인한다.
+         */
+        accumulate(s);
+        struct H {
+            TLS_header h1;
+            HandShake_header h2;
+            uint8_t certificate_length[2][3];  // 전체인증서 길이, 인증서 1의길이
+            unsigned char certificate[];       // 첫번째 인증서
+        } *p = (H *)s.data();
+        stringstream ss;
+        uint8_t *q = p->certificate_length[1];                                         // 인증서1의 길이
+        for (int i = 0, j = *q * 0x10000 + *(q + 1) * 0x100 + *(q + 2); i < j; i++) {  // 인증서1을 ss에 저장
+            ss << noskipws << p->certificate[i];
+        }
+        Json::Value jv;
+        try {  // DER을 Parsing하는 과정에서 예외가 발생 할 수 있다.
+            jv = DER::der_to_json(ss);
+        } catch (const char *e) {
+            cerr << "certificate error : " << e << '\n';
+            return alert(2, 44);  // fatal, certificate revoked
+        }
+        auto [K, e, sign] = DER::get_pubkeys(jv);
+        rsa_.K = K;  // 공개키 저장
+        rsa_.e = e;
+        return "";
     }
 }
 
@@ -288,8 +292,8 @@ void TLS::TLS<SV>::generate_signature(unsigned char *pub_key /** named curve,sec
     // padding
     unsigned char der_bytes[] = {0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
                                  0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04};
-    dq.insert(dq.begin(), d, d + 16);  // DER bytes 삽입
-    dq.push_front(dq.size());          // 이후 데이터의 총길이
+    dq.insert(dq.begin(), der_bytes, der_bytes + 16);  // DER bytes 삽입
+    dq.push_front(dq.size());                          // 이후 데이터의 총길이
     dq.push_front(0x30);
     dq.push_front(0x00);
     while (dq.size() < 254) dq.push_front(0xff);
@@ -453,7 +457,7 @@ optional<string> TLS::TLS<SV>::decode(string &&s) {
 
     if (int type = get_content_type(s).first; type != HANDSHAKE && type != APPLICATION_DATA)
         return {};                                                                 // error
-    UTIL::bnd_to_mpz(dec_seq_num_++, header_for_mac.seq, header_for_mac.seq + 8);  // 순서 번호를 넣고 증가시킨다.
+    UTIL::mpz_to_bnd(dec_seq_num_++, header_for_mac.seq, header_for_mac.seq + 8);  // 순서 번호를 넣고 증가시킨다.
     header_for_mac.h1 = p->h1;
     int msg_len = p->h1.get_length() - sizeof(H::iv) - 16 /*tag length*/;
     header_for_mac.h1.set_length(msg_len);
@@ -515,23 +519,34 @@ string TLS::TLS<SV>::finished(string &&s) {
     prf.secret(master_secret_.begin(), master_secret_.end());
     auto h = sha.hash(accumulated_handshakes_.cbegin(), accumulated_handshakes_.cend());
     prf.seed(h.begin(), h.end());
-    const char *label[2] = { "client finished", "server finished"};
+    const char *label[2] = {"client finished", "server finished"};
     prf.label(label[s == "" ? SV : !SV]);
     auto v = prf.expand_n_byte(12);
-    std::cout<< "finished" << std::endl;
-    for(const auto& c: v) {
-        std::cout << c;
+    std::cout << "finished" << std::endl;
+    for (const auto &c : v) {
+        std::cout << std::hex << static_cast<int>(c);
     }
-    std::endl;
+    std::cout << '\n';
 
     HandShake_header hh;
     hh.handshake_type = FINISHED;
     hh.set_length(12);
 
-    strng msg = struct_to_str(hh) + string{v.begin(), v.end()};
+    string msg = struct_to_str(hh) + string{v.begin(), v.end()};
     accumulated_handshakes_ += msg;
 
-    if(s == "") return encode(move(msg), HANDSHAKE);//메시지를 보내는 경우
-    else if(decode(move(s)) != msg) return alert(2, 51);//메시지를 받는경우
-    else return "";
+    if (s == "")
+        return encode(move(msg), HANDSHAKE);  // 메시지를 보내는 경우
+    else if (decode(move(s)) != msg)
+        return alert(2, 51);  // 메시지를 받는경우
+    else
+        return "";
 }
+
+template <bool SV>
+pair<int, int> TLS::TLS<SV>::get_content_type(const string &s) {
+    uint8_t *p = (uint8_t *)s.data();
+    return {p[0], p[5]};
+}
+
+#pragma pack()

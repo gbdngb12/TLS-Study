@@ -1,12 +1,15 @@
 #pragma once
+#include <algorithm>
 #include <array>
+#include <cstring>
+#include <deque>
+#include <fstream>
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
-#include <fstream>
-#include <deque>
-#include <algorithm>
+#include <ios>
+
 #include "aes128.h"  //암호 알고리즘
 #include "auth.h"    //인증 알고리즘
 #include "hash.h"    //해쉬 알고리즘
@@ -69,23 +72,22 @@ typedef struct HandShake_header {
  * Hello Message Header의 공통부분
  */
 typedef struct Hello_header {
-    uint8_t version[2] = { 0x03, 0x03 }; /** TLS 1.2 */
-    uint8_t random[32]; /** Client, Server Random*/
-    uint8_t session_id_length = 32; /** 세션 아이디 길이*/
-    uint8_t session_id[32]; /** 세션 아이디*/
+    uint8_t version[2] = {0x03, 0x03}; /** TLS 1.2 */
+    uint8_t random[32];                /** Client, Server Random*/
+    uint8_t session_id_length = 32;    /** 세션 아이디 길이*/
+    uint8_t session_id[32];            /** 세션 아이디*/
 } Hello_header;
-
 
 #pragma pack()
 template <bool SV = true>
 class TLS {
-    /**
-     * @brief TLS Class 생성자, 서버라면 rsa키를 이용해 비밀키 공개키 값을 설정하고 인증서 메시지를 생성한다.
-    */
-    TLS();
     TLS_header h;
 
    public:
+    /**
+     * @brief TLS Class 생성자, 서버라면 rsa키를 이용해 비밀키 공개키 값을 설정하고 인증서 메시지를 생성한다.
+     */
+    TLS();
     /*!
     @brief TLS Header의 content_type, HandShake Header의 HandShake Type을 가져온다.
     @param s TLS Header Struct 의 String
@@ -178,7 +180,6 @@ class TLS {
     @return 생성한 alert메시지의 String
     */
     std::string alert(uint8_t level, uint8_t desc);
-    
 
    protected:
     AES128::GCM<AES128::AES> aes_[2];  // 0 : client, 1 : server
@@ -204,16 +205,15 @@ class TLS {
     @return TLS Header를 포함한 Packet String
     */
     std::string accumulate(const std::string &s);  // TLS Header를 포함한 Packet을
-   private:
-
-    std::string certificate_;               /** RSA 인증서 저장*/
-    AUTH::RSA rsa_;                         /** 인증서의 공개키 값 저장*/
+   //private:
+    std::string certificate_; /** RSA 인증서 저장*/
+    AUTH::RSA rsa_;           /** 인증서의 공개키 값 저장*/
 
     /**
      * @brief 구조체를 string으로 변환하는 함수
      * @param s 구조체 또는 클래스
      * @return 구조체 또는 클래스의 string
-    */
+     */
     template <class S>
     static std::string struct_to_str(const S &s) {
         return std::string{(const char *)&s, sizeof(s)};
@@ -231,6 +231,39 @@ class TLS {
     */
     void derive_keys(mpz_class premaster_secret);
 
-    
+    //friend class FriendClass;
 };
+
+/*class FriendClass {
+   public:
+    template <bool SV>
+    auto get_rsa_k(TLS<SV> &obj) {
+        return obj.rsa_.K;
+    }
+    template <bool SV>
+    auto get_master_secret_begin(TLS<SV> &obj) {
+        return obj.master_secret_.begin();
+    }
+    template <bool SV>
+    auto get_master_secret_end(TLS<SV> &obj) {
+        return obj.master_secret_.end();
+    }
+    template <bool SV>
+    auto get_client_random_begin(TLS<SV> &obj) {
+        return obj.client_random_.begin();
+    }
+    template <bool SV>
+    auto get_client_random_end(TLS<SV> &obj) {
+        return obj.client_random_.end();
+    }
+    template <bool SV>
+    auto get_server_random_begin(TLS<SV> &obj) {
+        return obj.server_random_.begin();
+    }
+    template <bool SV>
+    auto get_server_random_begin(TLS<SV> &obj) {
+        return obj.server_random_.begin();
+    }
+
+};*/
 }  // namespace TLS
