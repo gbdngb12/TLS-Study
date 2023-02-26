@@ -65,6 +65,7 @@ class VRECV : public TCP_IP {
      */
     std::optional<std::string> recv(int fd = 0);
 
+//어차피 TCP/IP Header는 socket 객체에서 알아서 처리해 나오므로 http payload, tls header관련만 처리하면된다.
    protected:
     /**
      * @brief recv 함수를 호출하는것 만으로도 긴 길이의 데이터를 모두 수신하기 위해 완전한 메시지의 길이를 리턴해야하는 가상함수
