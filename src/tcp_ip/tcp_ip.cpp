@@ -144,7 +144,8 @@ void TCP_IP::Server::start(function<string(string)> f) {
 }
 
 TCP_IP::TLS_CLIENT::TLS_CLIENT(string ip, int port) : Client{ip, port} {
-    send(t.client_hello());
+    auto ret = t.client_hello();
+    send(ret);
     t.server_hello(*recv());
     t.server_certificate(*recv());
     t.server_key_exchange(*recv());
