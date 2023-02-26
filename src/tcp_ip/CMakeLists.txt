@@ -1,8 +1,8 @@
 project(tcp_ip)
 
-add_library(tcp_ip "tcp_ip.cpp")
+add_library(tcp_ip "tcp_ip.cpp" "service.cpp")
 
-set_target_properties(tcp_ip PROPERTIES PUBLIC_HEADER "tcp_ip.h")
+set_target_properties(tcp_ip PROPERTIES PUBLIC_HEADER "tcp_ip.h;service.h")
 
 # specify the include directory for the library
 target_include_directories(tcp_ip 

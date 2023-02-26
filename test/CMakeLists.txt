@@ -63,6 +63,11 @@ if(TCP_TEST)
     #list(REMOVE_ITEM CATCH2_ "Catch2::Catch2WithMain")
     #list(APPEND CATCH2_ "Catch2::Catch2")
 endif()
+
+if(TLS12_test)
+    list(APPEND MY_TEST_LIST "tls12_test.cpp")
+    list(APPEND EXTRA_LIBS tcp_ip)
+endif()
 add_executable(${PROJECT_NAME} ${MY_TEST_LIST})
 
 target_include_directories(${PROJECT_NAME}

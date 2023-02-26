@@ -15,6 +15,10 @@
 #include <string>
 
 #include "tls.h"
+#include "service.h"
+
+#define CLIENT false
+#define SERVER true
 namespace TCP_IP {
 
 const int buffer_size = 4096;
@@ -149,4 +153,21 @@ class Server : public HTTP {
 };
 
 void kill_zombie(int);
+
+class TLS_CLIENT : public Client {
+    TLS_CLIENT(std::string ip, int port);
+    void encode_send(std::string s);
+    std::optional<std::string> recv_decode();
+private:
+    TLS::TLS<CLIENT> t;
+    int get_full_length(const std::string& s);
+};
+
+class TLS_SERVER : public Server {
+    public:
+    TLS_SERVER(int port);
+    private:
+    int get_full_length(const std::string& s);
+};
+
 }  // namespace TCP_IP
