@@ -523,7 +523,7 @@ string TLS::TLS<SV>::finished(string &&s) {
     prf.label(label[s == "" ? SV : !SV]);
     auto v = prf.expand_n_byte(12);
     std::cout << "finished" << std::endl;
-    std::cout << "accumulate PRF : "
+    std::cout << "accumulate PRF : ";
     for (const auto &c : v) {
         std::cout << std::hex << static_cast<int>(c);
     }
