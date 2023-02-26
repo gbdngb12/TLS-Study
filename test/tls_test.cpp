@@ -68,14 +68,14 @@ TEST_CASE("tls") {
     //7. Change Cipher Spec
     ret = server.change_cipher_spec(client.change_cipher_spec());
     if(ret != "") {
-        alert_print(client.alert(std::move(ret)), SERVER, std::move(std::string{"CHANGE CIPHER SPEC"}));
+        alert_print(server.alert(std::move(ret)), SERVER, std::move(std::string{"CHANGE CIPHER SPEC"}));
         exit(1);
     }
 
     //8. CLIENT FINISHED
     ret = server.finished(client.finished());
     if(ret != "") {
-        alert_print(client.alert(std::move(ret)), SERVER, std::move(std::string{"CLIENT FINISHED"}));
+        alert_print(server.alert(std::move(ret)), SERVER, std::move(std::string{"CLIENT FINISHED"}));
         exit(1);
     }
 
