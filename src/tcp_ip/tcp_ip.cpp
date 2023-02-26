@@ -20,7 +20,9 @@ TCP_IP::TCP_IP::~TCP_IP() {
 }
 
 void TCP_IP::TCP_IP::send(const std::string& s, int fd) {
-    write(!fd ? client_fd_ : fd, s.data(), s.size());
+    if(write(!fd ? client_fd_ : fd, s.data(), s.size()) != -1) {
+        std::cout << "write() error" << std::endl;
+    }
 }
 
 optional<string> TCP_IP::TCP_IP::recv(int fd) {
@@ -127,7 +129,7 @@ void TCP_IP::Server::start(function<string(string)> f) {
         tv.tv_usec = 0;
         setsockopt(client_fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
         if (client_fd_ != -1) {
-            if (fork() != -1) {
+            if (!fork()) {
                 for (optional<string> s; s = recv(); send(f(*s)))
                     ;
                 // recv 함수 에러시 루프를 탈출해 접속이 종료
