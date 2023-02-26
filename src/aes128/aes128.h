@@ -13,7 +13,7 @@ class AES {
     void encrypt(unsigned char *m) const;
     void decrypt(unsigned char *m) const;
 
-    // protected:
+    protected:
     static const int N = 4;                 // key size in words 4바이트가 4개
     static const int ROUND = 11;            // round
     unsigned char schedule_[ROUND][N * 4];  // 라운드수 만큼 스케쥴링 키 존재
@@ -132,7 +132,7 @@ class CipherMode {  // 암호화 모드 추상 클래스
     void key(const unsigned char *p);
     virtual void iv(const unsigned char *p) = 0;
 
-   //protected:
+   protected:
     Cipher cipher_;         // 암호 종류
     unsigned char iv_[16];  // iv
 };

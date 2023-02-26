@@ -181,7 +181,7 @@ class TLS {
     */
     std::string alert(uint8_t level, uint8_t desc);
 
-   //protected:
+   protected:
     AES128::GCM<AES128::AES> aes_[2];  // 0 : client, 1 : server
     mpz_class enc_seq_num_ = 0 /*암호화 순서 번호*/,
               dec_seq_num_ = 0 /*복호화 순서 번호*/,
