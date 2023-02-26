@@ -20,7 +20,7 @@ TCP_IP::TCP_IP::~TCP_IP() {
 }
 
 void TCP_IP::TCP_IP::send(const std::string& s, int fd) {
-    if(write(!fd ? client_fd_ : fd, s.data(), s.size()) != -1) {
+    if(write(!fd ? client_fd_ : fd, s.data(), s.size()) == -1) {
         std::cout << "write() error" << std::endl;
     }
 }
@@ -129,8 +129,7 @@ void TCP_IP::Server::start(function<string(string)> f) {
         tv.tv_usec = 0;
         if(setsockopt(client_fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != -1) {
             if (!fork()) {
-                for (optional<string> s; s = recv(); send(f(*s)))
-                    ;
+                for (optional<string> s; s = recv(); send(f(*s)));
                 // recv 함수 에러시 루프를 탈출해 접속이 종료
                 send(end_string_);  // 솔직히 end_string의 존재이유를 잘모르겠음
                 break;              // fork한 프로세스 종료
