@@ -1,3 +1,4 @@
+#list(APPEND CATCH2_ "Catch2::Catch2WithMain")
 if(AES128_TEST)
     find_library(mynettle nettle REQUIRED)
     if(${mynettle}) # or: if(${myglewlib} STREQUAL myglewlib-NOTFOUND) -> 모든 상황에서 일치하지 않으므로 사용 x
@@ -55,23 +56,29 @@ if(TLS_TEST)
     list(APPEND MY_TEST_LIST "tls_test.cpp")
     list(APPEND EXTRA_LIBS tls)
 endif()
-add_compile_options(-DCATCH_TEST)
+
+if(TCP_TEST)
+    list(APPEND MY_TEST_LIST "tcp_ip_test.cpp")
+    list(APPEND EXTRA_LIBS tcp_ip)
+    #list(REMOVE_ITEM CATCH2_ "Catch2::Catch2WithMain")
+    #list(APPEND CATCH2_ "Catch2::Catch2")
+endif()
 add_executable(${PROJECT_NAME} ${MY_TEST_LIST})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        "catch2/src"
+        #"catch2/src"
         #${OPENSSL_INCLUDE_DIR}
 )
 
 target_link_directories(${PROJECT_NAME}
     PRIVATE
-        "catch2/src"
+        #"catch2/src"
 )
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        Catch2::Catch2WithMain
+        #CATCH2_
         ${EXTRA_LIBS}
         #${OPENSSL_LIBRARIES}
 )

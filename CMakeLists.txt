@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-project(myTLS)
+project(client)
 
 # Set Test Mode Option
 option(TEST_CASE "Build with test case" ON)
@@ -18,10 +18,11 @@ if(TEST_CASE)
     option(KEY_EXCHANGE_TEST "Test Key Exchange" OFF)
     option(CERT_TEST "Test Certificate" OFF)
     option(PRF_TEST "Test PRF" OFF)
-    option(TLS_TEST "Test TLS" ON)
+    option(TLS_TEST "Test TLS" OFF)
+    option(TCP_TEST "Test TCP/IP" ON)
 endif()
 
-add_subdirectory("catch2")
+#add_subdirectory("catch2")
 add_subdirectory("src")
 
 if(TEST_CASE)
