@@ -155,6 +155,7 @@ class Server : public HTTP {
 void kill_zombie(int);
 
 class TLS_CLIENT : public Client {
+public:
     TLS_CLIENT(std::string ip, int port);
     void encode_send(std::string s);
     std::optional<std::string> recv_decode();
