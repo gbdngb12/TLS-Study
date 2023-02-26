@@ -138,7 +138,6 @@ void TCP_IP::Server::start(function<string(string)> f) {
         } else { 
             std::cout << "accept() error" << std::endl;
         }
-        
     }
 }
 
