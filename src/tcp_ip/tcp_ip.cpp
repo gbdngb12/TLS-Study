@@ -135,7 +135,7 @@ void TCP_IP::Server::start(function<string(string)> f) {
                 send(end_string_);  // 솔직히 end_string의 존재이유를 잘모르겠음
                 break;              // fork한 프로세스 종료
             }
-        } else { 
+        } else if(client_fd_ == -1) { 
             std::cout << "accept() error" << std::endl;
         }
     }
