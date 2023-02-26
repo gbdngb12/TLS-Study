@@ -127,7 +127,7 @@ void TCP_IP::Server::start(function<string(string)> f) {
         tv.tv_usec = 0;
         setsockopt(client_fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
         if (client_fd_ != -1) {
-            if (fork() != -1) {
+            if (!fork()) {
                 for (optional<string> s; s = recv(); send(f(*s)))
                     ;
                 // recv 함수 에러시 루프를 탈출해 접속이 종료
