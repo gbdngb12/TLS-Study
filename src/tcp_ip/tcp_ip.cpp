@@ -125,8 +125,7 @@ void TCP_IP::Server::start(function<string(string)> f) {
         struct timeval tv;
         tv.tv_sec = time_out_;  // 시간 초과
         tv.tv_usec = 0;
-        setsockopt(client_fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-        if (client_fd_ != -1) {
+        if(setsockopt(client_fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != -1) {
             if (!fork()) {
                 for (optional<string> s; s = recv(); send(f(*s)))
                     ;
@@ -134,7 +133,7 @@ void TCP_IP::Server::start(function<string(string)> f) {
                 send(end_string_);  // 솔직히 end_string의 존재이유를 잘모르겠음
                 break;              // fork한 프로세스 종료
             }
-        } else {
+        } else { 
             std::cout << "accept() error" << std::endl;
         }
     }
