@@ -20,7 +20,9 @@ TCP_IP::TCP_IP::~TCP_IP() {
 }
 
 void TCP_IP::TCP_IP::send(const std::string& s, int fd) {
-    write(!fd ? client_fd_ : fd, s.data(), s.size());
+    if(write(!fd ? client_fd_ : fd, s.data(), s.size()) == -1) {
+        std::cout << "write() error" << std::endl;
+    }
 }
 
 optional<string> TCP_IP::TCP_IP::recv(int fd) {
