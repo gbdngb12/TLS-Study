@@ -20,7 +20,9 @@ TCP_IP::TCP_IP::~TCP_IP() {
 }
 
 void TCP_IP::TCP_IP::send(const std::string& s, int fd) {
-    write(!fd ? client_fd_ : fd, s.data(), s.size());
+    if(write(!fd ? client_fd_ : fd, s.data(), s.size()) == -1) {
+        std::cout << "write() error" << std::endl;
+    }
 }
 
 optional<string> TCP_IP::TCP_IP::recv(int fd) {
@@ -125,27 +127,22 @@ void TCP_IP::Server::start(function<string(string)> f) {
         struct timeval tv;
         tv.tv_sec = time_out_;  // 시간 초과
         tv.tv_usec = 0;
-        setsockopt(client_fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-        if (client_fd_ != -1) {
-            if (fork() != -1) {
-                for (optional<string> s; s = recv(); send(f(*s)))
-                    ;
-                // recv 함수 에러시 루프를 탈출해 접속이 종료
-                send(end_string_);  // 솔직히 end_string의 존재이유를 잘모르겠음
-                break;              // fork한 프로세스 종료
-            } else {
-                std::cout << "fork() error" << std::endl;
-                break;
-            }
-        } else {
+        if(setsockopt(client_fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
+            std::cout << "setsockopt error" << std::endl;
+        }
+        if(client_fd_ == -1) {
             std::cout << "accept() error" << std::endl;
+        }else if (!fork()) {
+            for (optional<string> s; s = recv(); send(f(*s)));
+            // recv 함수 에러시 루프를 탈출해 접속이 종료
+            send(end_string_);  // 솔직히 end_string의 존재이유를 잘모르겠음
+            break;              // fork한 프로세스 종료
         }
     }
 }
 
 TCP_IP::TLS_CLIENT::TLS_CLIENT(string ip, int port) : Client{ip, port} {
-    auto ret = t.client_hello();
-    send(ret);
+    send(t.client_hello());
     t.server_hello(*recv());
     t.server_certificate(*recv());
     t.server_key_exchange(*recv());
