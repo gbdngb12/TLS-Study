@@ -1,4 +1,5 @@
 #include "tls.h"
+#pragma pack(1)
 
 using namespace std;
 
@@ -9,7 +10,6 @@ template <bool SV>
 std::string TLS::TLS<SV>::alert(uint8_t level, uint8_t desc) {
 // 암호화 하여 전송할때에는 아래와 같이 호출
 // send(encode(alert(2, 20).substr(sizeof(TLS_header)), 0x15));
-#pragma pack(1)
     struct {
         TLS_header h1;
         uint8_t alert_level;
