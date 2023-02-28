@@ -1,4 +1,5 @@
 #include "tls.h"
+#pragma pack(1)
 
 using namespace std;
 
@@ -7,9 +8,8 @@ template class TLS::TLS<false>;  // client
 
 template <bool SV>
 std::string TLS::TLS<SV>::alert(uint8_t level, uint8_t desc) {
-// 암호화 하여 전송할때에는 아래와 같이 호출
-// send(encode(alert(2, 20).substr(sizeof(TLS_header)), 0x15));
-#pragma pack(1)
+    // 암호화 하여 전송할때에는 아래와 같이 호출
+    // send(encode(alert(2, 20).substr(sizeof(TLS_header)), 0x15));
     struct {
         TLS_header h1;
         uint8_t alert_level;
@@ -144,7 +144,7 @@ string TLS::TLS<SV>::client_hello(string &&s) {
         r.h2.handshake_type = CLIENT_HELLO;
         r.h1.set_length(sizeof(r) - sizeof(TLS_header));
         r.h2.set_length(sizeof(r) - sizeof(TLS_header) - sizeof(HandShake_header));
-        memset(r.h3.session_id, 0, r.h3.session_id_length);//처음 접속시에 비워둔다.
+        memset(r.h3.session_id, 0, r.h3.session_id_length);                       // 처음 접속시에 비워둔다.
         UTIL::mpz_to_bnd(UTIL::random_prime(32), r.h3.random, r.h3.random + 32);  // 클라이언트에 Client Random
         memcpy(client_random_.data(), r.h3.random, 32);                           // TLS 클래스에 Client Random 값 저장
         return accumulate(struct_to_str(r));
@@ -213,13 +213,13 @@ string TLS::TLS<SV>::server_hello(string &&s) {
 
 template <bool SV>
 TLS::TLS<SV>::TLS() {
-    if constexpr (SV) {          // Server
+    if constexpr (SV) {                // Server
         ifstream f2("../../key.pem");  // 비밀키 PEM 파일
-        if(!f2.is_open()) {
+        if (!f2.is_open()) {
             std::cerr << "key.pem open error" << std::endl;
         }
         ifstream f("../../cert.pem");  // 인증서 PEM 파일
-        if(!f.is_open()) {
+        if (!f.is_open()) {
             std::cerr << "cert.pem open error" << std::endl;
         }
         auto [K, e, d] = DER::get_keys(f2);
