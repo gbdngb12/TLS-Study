@@ -124,15 +124,19 @@ void TCP_IP::Server::start(function<string(string)> f) {
     int cl_size = sizeof(client_addr_);
     while (1) {
         client_fd_ = accept(server_fd_, (sockaddr*)&client_addr_, (socklen_t*)&cl_size);
+        if(client_fd_ == -1) {
+            std::cout << "accept() error" << std::endl;
+            perror("accpet");
+            continue;
+        }
         struct timeval tv;
         tv.tv_sec = time_out_;  // 시간 초과
         tv.tv_usec = 0;
         if(setsockopt(client_fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
             std::cout << "setsockopt error" << std::endl;
+            continue;
         }
-        if(client_fd_ == -1) {
-            std::cout << "accept() error" << std::endl;
-        }else if (!fork()) {
+        if (!fork()) {
             for (optional<string> s; s = recv(); send(f(*s)));
             // recv 함수 에러시 루프를 탈출해 접속이 종료
             send(end_string_);  // 솔직히 end_string의 존재이유를 잘모르겠음
