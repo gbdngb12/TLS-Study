@@ -144,6 +144,7 @@ string TLS::TLS<SV>::client_hello(string &&s) {
         r.h2.handshake_type = CLIENT_HELLO;
         r.h1.set_length(sizeof(r) - sizeof(TLS_header));
         r.h2.set_length(sizeof(r) - sizeof(TLS_header) - sizeof(HandShake_header));
+        memset(r.h3.session_id, 0, r.h3.session_id_length);//처음 접속시에 비워둔다.
         UTIL::mpz_to_bnd(UTIL::random_prime(32), r.h3.random, r.h3.random + 32);  // 클라이언트에 Client Random
         memcpy(client_random_.data(), r.h3.random, 32);                           // TLS 클래스에 Client Random 값 저장
         return accumulate(struct_to_str(r));

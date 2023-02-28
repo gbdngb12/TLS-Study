@@ -136,6 +136,7 @@ void TCP_IP::Server::start(function<string(string)> f) {
             for (optional<string> s; s = recv(); send(f(*s)));
             // recv 함수 에러시 루프를 탈출해 접속이 종료
             send(end_string_);  // 솔직히 end_string의 존재이유를 잘모르겠음
+            close(client_fd_);
             break;              // fork한 프로세스 종료
         }
     }
