@@ -308,6 +308,7 @@ void TLS::TLS<SV>::derive_keys(mpz_class premaster_secret) {
     unsigned char pre[32], rand[64];
     UTIL::mpz_to_bnd(premaster_secret, pre, pre + 32);
     HASH::PRF<HASH::SHA2> prf;  // Pseudo random function
+    prf.secret(pre, pre + 32);
     memcpy(rand, client_random_.data(), 32);
     memcpy(rand + 32, server_random_.data(), 32);
     prf.seed(rand, rand + 64);  // set seed
