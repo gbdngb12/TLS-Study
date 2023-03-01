@@ -1,8 +1,8 @@
 project(tls)
 
-add_library(tls "tls.cpp")
+add_library(tls "tls.cpp" "tls13.cpp")
 
-set_target_properties(tls PROPERTIES PUBLIC_HEADER "tls.h")
+set_target_properties(tls PROPERTIES PUBLIC_HEADER "tls.h;tls13.h")
 
 # specify the include directory for the library
 target_include_directories(tls 
