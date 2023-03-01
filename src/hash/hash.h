@@ -2,13 +2,12 @@
 // Code that requires the feature
 #include <arpa/inet.h>
 #include <nettle/sha2.h>
-
-#include <cstring>
+#include <string>
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <valarray>
 #include <vector>
-
 
 namespace HASH {
 class SHA1 {
@@ -179,4 +178,84 @@ class PRF {  // H is Hash Function
     HMAC<H> hmac_;
     std::vector<unsigned char> label_, seed_;
 };
+
+template <class H>
+class HKDF : public HMAC<H> {
+   public:
+    /**
+     * @brief salt값을 해쉬 함수의 output 길이만큼 0으로 채운다.
+     */
+    void zero_salt() {
+        uint8_t zeros[H::output_size] = {0};
+        HMAC<H>::key(zeros, zeros + H::output_size);
+    }
+    /**
+     * @brief salt값을 설정한다.
+     * @param p 설정할 salt값
+     * @param sz 설정할 salt 크기
+     */
+    void salt(uint8_t *p, int sz) {
+        this->key(p, p + sz);
+    }
+    /**
+     * @brief p값을 salt를 key로 해쉬한다.
+     * @param p 해쉬할 input값
+     * @param sz 해쉬하는 input의 크기
+     * @return p를 해쉬한값
+     */
+    std::vector<uint8_t> extract(uint8_t *p, int sz) {
+        auto a = this->hash(p, p + sz);
+        return std::vector<uint8_t>{a.begin(), a.end()};
+    }
+    /**
+     * @brief salt를 key로 하여 info를 label로하여 L길이로 해쉬 확장한다.
+     * @param info label
+     * @param L 확장하고자하는 길이
+     * @return L만큼 확장된 값
+     */
+    std::vector<uint8_t> expand(std::string info, int L) {
+        std::vector<uint8_t> r;
+        int k = H::output_size + info.size() + 1 /*counter의 크기*/;  // hash할 구조체의 크기
+        uint8_t t[k];                                                 // 해쉬할 구조체
+        memcpy(t + H::output_size, info.data(), info.size());         // T(0) + info
+        t[k - 1] = 1;                                                 // T(0) + info + 1
+        auto a = HMAC<H>::hash(t + H::output_size, t + k);//T(1) = HMAC(info + 1)
+        r.insert(r.end(), a.begin(), a.end());//T(1)
+        while(r.size() < L) {
+            memcpy(t, &a[0], a.size());//T(1) + info + 1
+            t[k - 1]++;//T(1) + info + 2
+            a = HMAC<H>::hash(t, t + k);//T(2) = HMAC(T(1) + info + 2)
+            r.insert(r.end(), a.begin(), a.end());
+        }
+        r.resize(L);
+        return r;
+    }
+    /**
+     * @brief expand_label함수를 호출한다
+     * @param label label
+     * @param msg context
+     * @return 해쉬의 길이만큼 확장된 값
+     */
+    std::vector<uint8_t> derive_secret(std::string label, std::string msg) {
+        auto a = this->sha_.hash(msg.begin(), msg.end());
+        return expand_label(label, std::string{a.begin(), a.end()}, H::output_size);
+    }
+
+   private:
+    /**
+     * @brief label과 context를 이용하여 새로운 label을 만들고 L길이만큼 확장한다.
+     * @param label label
+     * @param context context
+     * @param L 확장하고자 하는 길이
+     * @return L만큼 확장된 값
+     */
+    std::vector<uint8_t> expand_label(std::string label, std::string context, int L) {
+        std::string hkdf_label = "xxxtls13 " + label + 'x' + context;
+        hkdf_label[0] = L / 0x100;
+        hkdf_label[1] = L % 0x100;
+        hkdf_label[label.size() + 9]/*context Length 자리*/ = context.size();
+        return expand(hkdf_label, L);
+    }
+};
+
 }  // namespace HASH

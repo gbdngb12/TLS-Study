@@ -1,6 +1,7 @@
 #include "hash.h"
 
 template class HASH::HMAC<HASH::SHA1>;
+template class HASH::HKDF<HASH::SHA2>;
 
 void HASH::SHA1::preprocess(std::vector<unsigned char> &v) {
     size_t sz = v.size() * 8;  // 메시지길이 비트수

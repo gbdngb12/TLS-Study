@@ -1,2 +1,2 @@
 #!/bin/sh
-cd build; ./test/myTLS
+cd build; ./test/hkdf
