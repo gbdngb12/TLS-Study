@@ -38,18 +38,19 @@ class TLS13 : public TLS::TLS<SV> {
      */
     std::string encrypted_extension();
     /**
-     * @brief client extension 메시지가 있는지 분석한다.
-     * @return client extension 메시지가 존재/존재하지 않는다.
+     * @brief client extension 메시지를 분석해 TLS 1.3으로 통신가능한지 확인한다.
+     * @return TLS1.3 통신가능/불가능
      */
     bool client_ext(unsigned char *p);
     /**
      * @brief server extension 메시지가 있는지 분석한다.
+     * @param p server extension pointer
      * @return server extension 메시지가 존재/존재하지 않는다.
      */
     bool server_ext(unsigned char *p);
 
    private:
-    uint8_t prv_[32], echo_id_[32];
+    uint8_t prv_[32] = UTIL::random_prime(32), echo_id_[32];
     std::string ecdsa_certificate_;/**ECDSA DEM 인증서*/
     /**
      * @brief application traffic secret으로 데이터 암호화
@@ -72,41 +73,41 @@ class TLS13 : public TLS::TLS<SV> {
     */
     std::array<std::vector<uint8_t>, 2> finished_key_;
     /**
-     * @brief
-     * @param p
-     * @param len
-     * @return 
+     * @brief supported_group extension이 서버가 제공가능한지 확인한다.
+     * @param p supported_group extension의 pointer
+     * @param len supported_group extension의 length
+     * @return secp256r1을 지원할 경우 true
     */
     bool supported_group(unsigned char*p, int len);
 
     /**
-     * @brief
-     * @param p
-     * @param len
-     * @return
+     * @brief 타원곡선 좌표의 형식이 무압축인지 확인한다.
+     * @param p point_format의 pointer
+     * @param len point_format_extension의 length
+     * @return 무압축이면 true
     */
     bool point_format(unsigned char*p, int len);
 
     /**
-     * @brief
-     * @param p
-     * @return 
+     * @brief key_share 함수에서 호출, 타원곡선의 좌표를 세팅한다.
+     * @param p algorithm type Pointer
+     * @return 지원하는 키 알고리즘이 있다면 세팅하고 참 리턴, 없으면 거짓
     */
     bool sub_key_share(unsigned char*p);
 
     /**
-     * @brief
-     * @param p 
-     * @param len
-     * @return 
+     * @brief key_share_extension을 확인한다.
+     * @param p key_share_extension pointer
+     * @param len key_share_extension length
+     * @return 지원하는 key_share_algorithm이 있다면 참리턴.
     */
     bool key_share(unsigned char*p, int len);
 
     /**
-     * @brief
-     * @param p
-     * @param len
-     * @return 
+     * @brief supported_version extension을 확인한다.
+     * @param p supported_version pointer
+     * @param len supported_version length
+     * @return TLS 1.3을 지원하면 true를 리턴한다.
     */
     bool suppotred_version(unsigned char *p, int len);
 
