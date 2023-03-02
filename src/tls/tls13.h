@@ -20,7 +20,7 @@ class TLS13 : public TLS::TLS<SV> {
     std::string server_certificate13();
 
    protected:
-    HASH::HKDF<HASH> hkdf_;
+    HASH::HKDF<HASH::SHA2> hkdf_;
     mpz_class premaster_secret_; /**TLS1.3인경우 Hello Message 이후에 0이 아닌값으로 셋팅 키교환 알고리즘으로 합의된 키 ECDHE*/
     /**
      * @brief client extension 메시지를 생성한다.

@@ -240,8 +240,6 @@ class HKDF : public HMAC<H> {
         auto a = this->sha_.hash(msg.begin(), msg.end());
         return expand_label(label, std::string{a.begin(), a.end()}, H::output_size);
     }
-
-   private:
     /**
      * @brief label과 context를 이용하여 새로운 label을 만들고 L길이만큼 확장한다.
      * @param label label

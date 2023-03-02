@@ -10,6 +10,7 @@ namespace AES128 {
 class AES {
    public:
     void key(const unsigned char *key);  // expand key 기능 포함
+    
     void encrypt(unsigned char *m) const;
     void decrypt(unsigned char *m) const;
 

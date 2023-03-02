@@ -42,8 +42,8 @@ array<vector<uint8_t>, 2> TLS13::TLS13<SV>::set_aes(std::vector<uint8_t> salt, s
         hkdf_.salt(&secret[i][0], secret[i].size());
         auto key = hkdf_.expand_label("key", "", 16);
         auto iv = hkdf_.expand_label("iv", "", 12);
-        this->aes_[i].key(&key[0], key.size());  // set AES key
-        this->aes_[i].iv(&iv[i], iv.size());     // set AES iv
+        this->aes_[i].key(&key[0]);  // set AES key
+        this->aes_[i].iv(&iv[i], 0, iv.size());     // set AES iv
 
         /**
          * @brief generate finished_key
@@ -114,7 +114,7 @@ string TLS13::TLS13<SV>::client_ext() {
          * @struct extension 5 : psk_exchange_mode extension
          */
         uint8_t psk_mode[2] = {0, 0x2d};    /** @brief extension type */
-        uint8_t psk_mode_length[2] = {0, 2} /** @brief extension totla length*/
+        uint8_t psk_mode_length[2] = {0, 2}; /** @brief extension totla length*/
         uint8_t psk_mode_llength = 1;
         uint8_t psk_with_ecdhe = 1; /** psk = 0, psk_dhe = 1*/
 
@@ -129,7 +129,7 @@ string TLS13::TLS13<SV>::client_ext() {
          * @brief rsa_pkcs1_sha256(0x0401)
          * @brief ecdsa_secp256r1_sha256(0x0403)
          */
-        uint8_t signature[4] = {8, 4, 4, 1, 4, 3};
+        uint8_t signature[6] = {8, 4, 4, 1, 4, 3};
 
     } ext;
 
@@ -139,7 +139,7 @@ string TLS13::TLS13<SV>::client_ext() {
 
     mpz_to_bnd(this->prv_key_, prv_, prv_ + 32);
     curve25519_mul_g(ext.x2, prv_); /** ext.x2 <= G(=9) * prv_ x25519 x좌표 셋팅 */
-    return struct_to_str(ext);
+    return TLS::TLS<SV>::struct_to_str(ext);
 }
 
 template <bool SV>
@@ -208,7 +208,7 @@ bool TLS13::TLS13<SV>::sub_key_share(unsigned char *p) {
         return true;
     } else if (*p == 0 && *(p + 1) == 29) {  // x25519 0x001d
         uint8_t q[32];
-        curve25519_mul(q, this->prv_, p + 4);//상대방의 공개키 * 자신의 개인키 ( premaster_secret )
+        curve25519_mul(q, this->prv_, p + 4);      // 상대방의 공개키 * 자신의 개인키 ( premaster_secret )
         premaster_secret_ = bnd_to_mpz(q, q + 32); /** @remark TLS 1.3에서 key_share_extension을 통해 premaster_secret값을 설정한다!!*/
         this->P_.x = -1;                           /*** @remark if use x25519 => secp256r1은 사용하지 못한다.*/
         return true;
@@ -253,8 +253,8 @@ string TLS13::TLS13<SV>::server_ext() {
      * @struct extension 2.1 : key_share_extension (secp256r1)
      */
     struct {
-        uint8_t key_share[2] = {0, 51};             /** @brief extension type */
-        uint8_t key_share_length[2] = {0, 69};     /** @brief extension total length*/
+        uint8_t key_share[2] = {0, 51};        /** @brief extension type */
+        uint8_t key_share_length[2] = {0, 69}; /** @brief extension total length*/
 
         uint8_t secp256r1_key[2] = {0, 23}; /** @brief algorithm type*/
         uint8_t key_length[2] = {0, 65};    /** @brief key length*/
@@ -267,31 +267,31 @@ string TLS13::TLS13<SV>::server_ext() {
      * @struct extension 2.2 : key_share_extension (x25519)
      */
     struct {
-        uint8_t key_share[2] = {0, 51};             /** @brief extension type */
-        uint8_t key_share_length[2] = {0, 36};     /** @brief extension total length*/
-        uint8_t x25519[2] = {0, 29};      /** @brief algorithm type */
-        uint8_t key_length2[2] = {0, 32}; /** @brief key length*/
-        uint8_t x[32];                   /** @brief key */
+        uint8_t key_share[2] = {0, 51};        /** @brief extension type */
+        uint8_t key_share_length[2] = {0, 36}; /** @brief extension total length*/
+        uint8_t x25519[2] = {0, 29};           /** @brief algorithm type */
+        uint8_t key_length2[2] = {0, 32};      /** @brief key length*/
+        uint8_t x[32];                         /** @brief key */
     } x25519;
-    if(this->P_.x == -1) { //client hello를 분석한후 선택한 스펙이 x25519인 경우
-        curve25519_mul_g(x25519.x, this->prv_);//x25519.x = G * prv_
-        ext.extension_length[1] = 46;//6 + 8 + 32
-        return struct_to_str(ext) + struct_to_str(x25519);
-    } else {//secp256r1
+    if (this->P_.x == -1) {                      // client hello를 분석한후 선택한 스펙이 x25519인 경우
+        curve25519_mul_g(x25519.x, this->prv_);  // x25519.x = G * prv_
+        ext.extension_length[1] = 46;            // 6 + 8 + 32
+        return TLS::TLS<SV>::struct_to_str(ext) + TLS::TLS<SV>::struct_to_str(x25519);
+    } else {  // secp256r1
         mpz_to_bnd(this->P_.x, secp.x, secp.x + 32);
-        mpz_to_bnd(this->P>.y, secp.y, secp.y + 32);
-        return struct_to_str(ext) + struct_to_str(secp);
+        mpz_to_bnd(this->P_.y, secp.y, secp.y + 32);
+        return TLS::TLS<SV>::struct_to_str(ext) + TLS::TLS<SV>::struct_to_str(secp);
     }
 }
 
-template<bool SV>
+template <bool SV>
 bool TLS13::TLS13<SV>::server_ext(unsigned char *p) {
     int total_len = *p++ * 0x100 + *p++;
-    for(unsigned char *q = p; p < q + total_len;) {
+    for (unsigned char *q = p; p < q + total_len;) {
         int type = *p++ * 0x100 + *p++;
         int len = *p++ * 0x100 + *p++;
-        //check the supported version extension..
-        if(type == 51) /** @brief check key share extension */ {
+        // check the supported version extension..
+        if (type == 51) /** @brief check key share extension */ {
             return key_share(p, len);
         }
         p += len;
@@ -299,6 +299,75 @@ bool TLS13::TLS13<SV>::server_ext(unsigned char *p) {
     return false;
 }
 
+template <bool SV>
+string TLS13::TLS13<SV>::client_hello(string &&s) {
+    if constexpr (SV) {                             // Server : client_hello 메시지 분석
+        unsigned char *p = (unsigned char *)&s[43]; /**session_id length*/
+        memcpy(echo_id_, p + 1, *p);                // copy session_id
+        p += *p + 1;                                // p= cipher_suite length
+        int cipher_suite_length = *p++ * 0x100 + *p++;
+        p += cipher_suite_length;
+        p += *p /*compression length*/ + 1 /*한칸뒤로 이동*/;  // extension start
+        int ext_start = p - (unsigned char *)&s[0];
+        /** @remark call TLS 1.2 Client Hello Function*/
+        string r = TLS::TLS<SV>::client_hello(forward<string>(s));
+        return s.size() > ext_start /* has extension */ && client_ext(p) /*is possible TLS 1.3*/ ? "" : r;
+    } else {  // Client : client_hello 메시지 생성
+        string hello = TLS::TLS<SV>::client_hello();
+        this->accumulated_handshakes_ = "";
+        string ext = client_ext();
+        int hello_size = static_cast<uint8_t>(hello[3]) * 0x100 + static_cast<uint8_t>(hello[4]) + ext.size();
+        mpz_to_bnd(hello_size, &hello[3], &hello[5]);      // length in tls header
+        mpz_to_bnd(hello_size - 4, &hello[6], &hello[9]);  // length in handshake header
+        return this->accumulate(hello + ext);
+    }
+}
 
+template <bool SV>
+string TLS13::TLS13<SV>::server_hello(string &&s) {
+    if constexpr (SV) {  // Server : Server Hello 메시지 생성
+        string tmp = this->accumulated_handshakes_;
+        string hello = TLS::TLS<SV>::server_hello();
+        if (!premaster_secret_) return hello;  // TLS1.2
+        memcpy(&hello[44], echo_id_, 32);      // TLS 1.3에서는 클라이언트가 전송한 id를 저장후 에코한다.
+        hello[76] = 19;
+        hello[77] = 1;  // 암호화-해쉬 Cipher Suite : TLS AES128 GCM SHA 256TLS_AES_128_GCM_SHA256 = {0x13, 0x01}
+        /** @remark 암호화 방법은 서버가 선택*/
+        this->accumulated_handshakes_ = tmp;
+        string ext = server_ext();
+        int hello_size = static_cast<uint8_t>(hello[3]) * 0x100 + static_cast<uint8_t>(hello[4]) + ext.size();
+        mpz_to_bnd(hello_size, &hello[3], &hello[5]);      // length in TLS Header
+        mpz_to_bnd(hello_size - 4, &hello[6], &hello[9]);  // length in Handshake Header
+        return this->accumulate(hello + ext);
+    } else {  // Client : Server Hello 메시지 분석
+        string s2 = s;
+        string r = TLS::TLS<SV>::server_hello(move(s2));
+        return s.size() > 80 /** 확장 데이터가 존재하는지 */ && server_ext((uint8_t *)&s[79]) /**server extension 메시지가 존재한다면 */ ? "" : r;
+    }
+}
+
+template<bool SV>
+string TLS13::TLS13<SV>::encrypted_extension() {
+    /**
+     * @struct encrypted extension
+    */
+    struct H {
+        uint8_t enc_ext_type = 8;/** @brief extension type*/
+        uint8_t total_len[3] = {0 , 0, 10}; /** @brief extension total length*/
+
+        uint8_t ext_len[2] = { 0, 8 }; /** @brief start! extension length */
+        /**
+         * @struct extension 1 : key exchange supported_group extension
+         */
+        uint8_t supported_group[2] = {0, 10};            /** @brief extension type */
+        uint8_t supported_group_length[2] = {0, 6};      /** @brief extension total length */
+        uint8_t supported_group_list_length[2] = {0, 4}; /** @brief supported group length */
+        uint8_t secp256r1[2] = {0, 23};                  /** @brief 0x0017 */
+        uint8_t x255[2] = {0, 29};                       /** @brief 0x001d */
+    } h;
+    string r = TLS::TLS<SV>::struct_to_str(h);
+    this->accumulated_handshakes_ += r;
+    return r;
+}
 
 #pragma pack()
