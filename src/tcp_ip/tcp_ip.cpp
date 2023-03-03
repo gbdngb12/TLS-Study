@@ -1,6 +1,7 @@
 #include "tcp_ip.h"
 
 #include <iostream>
+#include <thread>
 
 using namespace std;
 
@@ -20,7 +21,7 @@ TCP_IP::TCP_IP::~TCP_IP() {
 }
 
 void TCP_IP::TCP_IP::send(const std::string& s, int fd) {
-    if(write(!fd ? client_fd_ : fd, s.data(), s.size()) == -1) {
+    if (write(!fd ? client_fd_ : fd, s.data(), s.size()) == -1) {
         std::cout << "write() error" << std::endl;
     }
 }
@@ -124,7 +125,7 @@ void TCP_IP::Server::start(function<string(string)> f) {
     int cl_size = sizeof(client_addr_);
     while (1) {
         client_fd_ = accept(server_fd_, (sockaddr*)&client_addr_, (socklen_t*)&cl_size);
-        if(client_fd_ == -1) {
+        if (client_fd_ == -1) {
             std::cout << "accept() error" << std::endl;
             perror("accpet");
             continue;
@@ -132,16 +133,17 @@ void TCP_IP::Server::start(function<string(string)> f) {
         struct timeval tv;
         tv.tv_sec = time_out_;  // 시간 초과
         tv.tv_usec = 0;
-        if(setsockopt(client_fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
+        if (setsockopt(client_fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
             std::cout << "setsockopt error" << std::endl;
             continue;
         }
         if (!fork()) {
-            for (optional<string> s; s = recv(); send(f(*s)));
+            for (optional<string> s; s = recv(); send(f(*s)))
+                ;
             // recv 함수 에러시 루프를 탈출해 접속이 종료
             send(end_string_);  // 솔직히 end_string의 존재이유를 잘모르겠음
             close(client_fd_);
-            break;              // fork한 프로세스 종료
+            break;  // fork한 프로세스 종료
         }
     }
 }
@@ -177,4 +179,60 @@ TCP_IP::TLS_SERVER::TLS_SERVER(int port) : Server{port} {}
 
 int TCP_IP::TLS_SERVER::get_full_length(const string& s) {
     return s.size() < 5 ? 0 : static_cast<unsigned char>(s[3]) * 0x100 + static_cast<unsigned char>(s[4]) + 5;
+}
+
+int TCP_IP::MIDDLE::get_full_length(const string& s) {
+    return static_cast<unsigned char>(s[3]) * 0x100 + static_cast<unsigned char>(s[4]) + 5;
+}
+TCP_IP::MIDDLE::MIDDLE(int outport, int inport, int time_out, int queue, string end) : Server{outport, time_out, queue, end}, inport_{inport} {}
+
+void TCP_IP::MIDDLE::conn() {
+    int cl_size = sizeof(client_addr_);
+    vector<thread> v;
+    while (1) {
+        client_fd_ = accept(server_fd_, (sockaddr*)&client_addr_, (socklen_t*)&cl_size);  // 접속 대기
+        if (client_fd_ == -1) {
+            cout << "accept() error" << endl;
+        } else {
+            v.emplace_back(thread{&MIDDLE::connected}, this, client_fd_);
+            v.back().detach();  // 현재 Thread가 관리하지 않는다. 생성된 Thread가 알아서 관리하도록
+        }
+    }
+}
+
+void TCP_IP::MIDDLE::connected(int client_fd) {
+    TLS13::TLS13<SERVER> t;
+    if (t.handshake(bind(&MIDDLE::recv, this, client_fd),
+                    bind(&MIDDLE::send, this, placeholders::_1, client_fd))) {
+        while (1) {
+            // recv from client
+            if (auto ret = recv(client_fd)) {
+                cout << "Server Received: " << endl;
+                cout << *ret << endl;
+                // send to client
+                send(t.encode(move("This is TLS 1.3 Server!!")), client_fd);
+            } else {
+                break;
+            }
+        }
+    }
+    close(client_fd);
+}
+
+void TCP_IP::MIDDLE::start() {
+    thread th{&MIDDLE::conn, this};  // 접속 대기 Thread 생성
+    string s;
+    cout << "starting middle server, enter \'?\' to see commands.\n";
+    while (cin >> s) {
+        if (s == "end")
+            break;
+        else if (s == "help" || s == "?") {
+            cout << "end, timeout [sec]" << endl
+                 << "current timeout " << time_out_ << endl;
+        } else if (s == "timeout") {
+            cin >> time_out_;
+            cout << "time out set " << time_out_ <<endl;
+        }
+    }
+    th.join();//main Thread 종료 -> conn도 종료
 }

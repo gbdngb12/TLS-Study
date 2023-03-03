@@ -213,33 +213,35 @@ string TLS::TLS<SV>::server_hello(string &&s) {
 
 template <bool SV>
 TLS::TLS<SV>::TLS() {
-    if constexpr (SV) {                // Server
-        ifstream f2("../../key.pem");  // 비밀키 PEM 파일
-        if (!f2.is_open()) {
-            std::cerr << "key.pem open error" << std::endl;
+    if(tmp_version == 2) {
+        if constexpr (SV) {                // Server
+            ifstream f2("../../key.pem");  // 비밀키 PEM 파일
+            if (!f2.is_open()) {
+                std::cerr << "key.pem open error" << std::endl;
+            }
+            ifstream f("../../cert.pem");  // 인증서 PEM 파일
+            if (!f.is_open()) {
+                std::cerr << "cert.pem open error" << std::endl;
+            }
+            auto [K, e, d] = DER::get_keys(f2);
+            this->rsa_.set_key(e, d, K);
+            std::vector<unsigned char> r;
+            // 인코딩된 DER 값을 계속 읽는다.
+            for (string s; (s = DER::get_certificate_core(f)) != "" /*더이상 인코딩된 DER이 존재하지 않을때*/;) {
+                auto v = BASE64::base64_decode(s);  // v에는 인증서 vector
+                // 인증서의 길이 공간 확보
+                for (int i = 0; i < 3; i++) r.push_back(0);
+                UTIL::mpz_to_bnd(v.size(), r.end() - 3, r.end());  // 인증서n의 크기
+                r.insert(r.end(), v.begin(), v.end());             // 인증서n 삽입
+            }
+            vector<uint8_t> v = {HANDSHAKE /*TLS Content Type*/, /*TLS Version*/ 3, 3, /*TLS.length*/ 0, 0, /*Handshake Type*/ CERTIFICATE, /*HandShake.length*/ 0, 0, 0, /*총 인증서 길이*/ 0, 0, 0};
+            UTIL::mpz_to_bnd(r.size(), v.end() - 3, v.end());                                                          // 전체 인증서 길이 삽입
+            UTIL::mpz_to_bnd(r.size() + 3 /*총 인증서 길이[3]*/, v.end() - 6, v.end() - 3);                            // HandShake Header Length 값
+            UTIL::mpz_to_bnd(r.size() + 7 /*총 인증서 길이[3] + HandShake Header[4]*/, v.begin() + 3, v.begin() + 5);  // TLS Header Length 값
+            r.insert(r.begin(), v.begin(), v.end());                                                                   // TLS Header + HandShake Header + Total Cert Length + Cert1_length + Cert[] + ...
+            // this->certificate_{r.begin(), r.end()};
+            this->certificate_.assign(r.begin(), r.end());
         }
-        ifstream f("../../cert.pem");  // 인증서 PEM 파일
-        if (!f.is_open()) {
-            std::cerr << "cert.pem open error" << std::endl;
-        }
-        auto [K, e, d] = DER::get_keys(f2);
-        this->rsa_.set_key(e, d, K);
-        std::vector<unsigned char> r;
-        // 인코딩된 DER 값을 계속 읽는다.
-        for (string s; (s = DER::get_certificate_core(f)) != "" /*더이상 인코딩된 DER이 존재하지 않을때*/;) {
-            auto v = BASE64::base64_decode(s);  // v에는 인증서 vector
-            // 인증서의 길이 공간 확보
-            for (int i = 0; i < 3; i++) r.push_back(0);
-            UTIL::mpz_to_bnd(v.size(), r.end() - 3, r.end());  // 인증서n의 크기
-            r.insert(r.end(), v.begin(), v.end());             // 인증서n 삽입
-        }
-        vector<uint8_t> v = {HANDSHAKE /*TLS Content Type*/, /*TLS Version*/ 3, 3, /*TLS.length*/ 0, 0, /*Handshake Type*/ CERTIFICATE, /*HandShake.length*/ 0, 0, 0, /*총 인증서 길이*/ 0, 0, 0};
-        UTIL::mpz_to_bnd(r.size(), v.end() - 3, v.end());                                                          // 전체 인증서 길이 삽입
-        UTIL::mpz_to_bnd(r.size() + 3 /*총 인증서 길이[3]*/, v.end() - 6, v.end() - 3);                            // HandShake Header Length 값
-        UTIL::mpz_to_bnd(r.size() + 7 /*총 인증서 길이[3] + HandShake Header[4]*/, v.begin() + 3, v.begin() + 5);  // TLS Header Length 값
-        r.insert(r.begin(), v.begin(), v.end());                                                                   // TLS Header + HandShake Header + Total Cert Length + Cert1_length + Cert[] + ...
-        // this->certificate_{r.begin(), r.end()};
-        this->certificate_.assign(r.begin(), r.end());
     }
 }
 

@@ -14,8 +14,9 @@
 #include <regex>
 #include <string>
 
-#include "tls.h"
 #include "service.h"
+#include "tls.h"
+#include "tls13.h"
 
 #define CLIENT false
 #define SERVER true
@@ -69,7 +70,7 @@ class VRECV : public TCP_IP {
      */
     std::optional<std::string> recv(int fd = 0);
 
-//어차피 TCP/IP Header는 socket 객체에서 알아서 처리해 나오므로 http payload, tls header관련만 처리하면된다.
+    // 어차피 TCP/IP Header는 socket 객체에서 알아서 처리해 나오므로 http payload, tls header관련만 처리하면된다.
    protected:
     /**
      * @brief recv 함수를 호출하는것 만으로도 긴 길이의 데이터를 모두 수신하기 위해 완전한 메시지의 길이를 리턴해야하는 가상함수
@@ -155,20 +156,67 @@ class Server : public HTTP {
 void kill_zombie(int);
 
 class TLS_CLIENT : public Client {
-public:
+   public:
     TLS_CLIENT(std::string ip, int port);
     void encode_send(std::string s);
     std::optional<std::string> recv_decode();
-private:
+
+   private:
     TLS::TLS<CLIENT> t;
     int get_full_length(const std::string& s);
 };
 
 class TLS_SERVER : public Server {
-    public:
+   public:
     TLS_SERVER(int port);
-    private:
+
+   private:
     int get_full_length(const std::string& s);
 };
 
+class TLS13_CLIENT : public Client {
+   public:
+    TLS13_CLIENT(std::string ip, int port) : Client{ip, port} {
+        t.handshake(std::bind(&TLS_CLIENT::recv, this, 0 /*fd*/) /*recv*/, std::bind(&TLS_CLIENT::send, this, std::placeholders::_1, 0) /*send*/);
+    }
+
+    void encode_send(std::string s) {
+        send(t.encode(move(s)));
+    }
+
+    std::optional<std::string> recv_decode() {
+        return t.decode(*recv());
+    }
+
+   private:
+    TLS13::TLS13<CLIENT> t;
+    int get_full_length(const std::string& s) {
+        return s.size() < 5 ? 0 : static_cast<unsigned char>(s[3]) * 0x100 + static_cast<unsigned char>(s[4]) + 5;
+    }
+};
+
+class MIDDLE : public Server {
+   public:
+    MIDDLE(int outport = 4433, int inport = 2001, int time_out = 1800, int queue_limit = 10, std::string end_string = "end");
+    /**
+     * @brief CommandLine을 관리하는 Main Thread
+    */
+    void start();
+
+   protected:
+    int inport_;
+    bool debug_ = false;
+
+   private:
+    /**
+     * @brief client와 통신을 유지하는 Thread
+     * @param client_fd client file descriptor
+    */
+    void connected(int client_fd);
+    /**
+     * @brief 외부와의 접속을 대기하는 Thread
+    */
+    void conn();
+    int get_full_length(const std::string &s);
+};
 }  // namespace TCP_IP

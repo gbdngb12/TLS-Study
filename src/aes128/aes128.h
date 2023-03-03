@@ -164,6 +164,11 @@ class GCM : public CipherMode<Cipher> {
      */
     std::array<unsigned char, 16> /*Auth Tag*/ encrypt(unsigned char *p, int sz);
     std::array<unsigned char, 16> /*Auth Tag*/ decrypt(unsigned char *p, int sz);
+    /**
+     * @brief sequence number 앞에 4바이트0을 padding하고 iv와 xor한다.
+     * @param p sequence number
+    */
+    void xor_with_iv(const unsigned char* p);
 
    protected:
     unsigned char lenAC_[16];         // len(AuthData)의 비트수 || len(Cipher Text)의 비트수

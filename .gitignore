@@ -61,3 +61,6 @@ build/
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+#CLion ignore
+.idea/

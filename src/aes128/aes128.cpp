@@ -357,3 +357,9 @@ std::array<unsigned char, 16> /*Auth Tag*/ AES128::GCM<Cipher>::decrypt(unsigned
     }
     return a;
 }
+
+template<class Cipher>
+void AES128::GCM<Cipher>::xor_with_iv(const unsigned char* p) {
+    for(int i = 0; i < 4; i++) this->iv_[i] ^= 0;//4바이트의 0과 xor(굳이 안해도됨)
+    for(int i = 0; i < 8; i++) this->iv_[4 + i] ^= p[i];
+}

@@ -7,13 +7,18 @@ namespace TLS13 {
 template <bool SV>
 class TLS13 : public TLS::TLS<SV> {
    public:
+    TLS13();
     std::string client_hello(std::string &&s = "");
     std::string server_hello(std::string &&s = "");
     /**
-     * @brief handshake를 수행한다.
+     * @brief TLS 1.3 handshake를 수행한다.
+     * @return TLS 1.3 handshake 성공시 true 실패시 false
      */
     bool handshake(std::function<std::optional<std::string>()> read_f, std::function<void(std::string)> write_f);
     std::string finished(std::string &&s = "");
+    /**
+     * @brief 인증서 확인 메시지를 생성한다.
+    */
     std::string certificate_verify();
     std::optional<std::string> decode(std::string &&s);
     std::string encode(std::string &&s, int type = 23);
@@ -50,7 +55,7 @@ class TLS13 : public TLS::TLS<SV> {
     bool server_ext(unsigned char *p);
 
    private:
-    uint8_t prv_[32] = UTIL::random_prime(32), echo_id_[32];
+    uint8_t prv_[32], echo_id_[32];
     std::string ecdsa_certificate_;/**ECDSA DEM 인증서*/
     /**
      * @brief application traffic secret으로 데이터 암호화
@@ -114,6 +119,6 @@ class TLS13 : public TLS::TLS<SV> {
     void derive_keys(mpz_class premaster_secret);
     std::optional<std::string> decode13(std::string &&s);
     std::string encode13(std::string &&s, int type = 23);
-
+    mpz_class private_key;
 };
 }  // namespace TLS13
