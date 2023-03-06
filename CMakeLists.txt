@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-project(hkdf)
+project(tls13)
 
 # Set Test Mode Option
 option(TEST_CASE "Build with test case" ON)
@@ -21,10 +21,10 @@ if(TEST_CASE)
     option(TLS_TEST "Test TLS" OFF)
     option(TCP_TEST "Test TCP/IP" OFF)
     option(TLS12_test "Test TLS 1.2 with TCP/IP" OFF)
-    option(HKDF_TEST "Test HKDF" ON)
+    option(TLS13_test "Test TLS 1.3" ON)
 endif()
 
-add_subdirectory("catch2")
+#add_subdirectory("catch2")
 add_subdirectory("src")
 
 if(TEST_CASE)

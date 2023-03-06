@@ -194,7 +194,7 @@ void TCP_IP::MIDDLE::conn() {
         if (client_fd_ == -1) {
             cout << "accept() error" << endl;
         } else {
-            v.emplace_back(thread{&MIDDLE::connected}, this, client_fd_);
+            v.emplace_back(thread{&MIDDLE::connected, this, client_fd_});
             v.back().detach();  // 현재 Thread가 관리하지 않는다. 생성된 Thread가 알아서 관리하도록
         }
     }

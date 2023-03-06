@@ -74,22 +74,27 @@ if(HKDF_TEST)
     list(APPEND EXTRA_LIBS hash)
     list(APPEND EXTRA_LIBS myutil)
 endif()
+
+if(TLS13_test)
+    list(APPEND MY_TEST_LIST "tls13_server.cpp")
+    list(APPEND EXTRA_LIBS tcp_ip)
+endif()
 add_executable(${PROJECT_NAME} ${MY_TEST_LIST})
 
-target_include_directories(${PROJECT_NAME}
-    PUBLIC
-        "catch2/src"
-        #${OPENSSL_INCLUDE_DIR}
-)
+#target_include_directories(${PROJECT_NAME}
+#    PUBLIC
+#        "catch2/src"
+#        #${OPENSSL_INCLUDE_DIR}
+#)
 
-target_link_directories(${PROJECT_NAME}
-    PRIVATE
-        "catch2/src"
-)
+#target_link_directories(${PROJECT_NAME}
+#    PRIVATE
+#        "catch2/src"
+#)
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        "Catch2::Catch2WithMain"
+        #"Catch2::Catch2WithMain"
         ${EXTRA_LIBS}
         #${OPENSSL_LIBRARIES}
 )

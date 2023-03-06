@@ -146,7 +146,9 @@ template <bool SV>
 bool TLS13::TLS13<SV>::client_ext(unsigned char *p) {
     // extension을 확인해 1.3으로 통신가능한지 확인한다.
     int total_len = *p++ * 0x100 + *p++;
-    bool check_ext[5] = {false};  // supported_group, ec_point_format, key_share, supported_version, psk_exchange_modes
+    bool check_ext[5] = {
+        false,
+    };  // supported_group, ec_point_format, key_share, supported_version, psk_exchange_modes
 
     for (unsigned char *q = p; p < q + total_len;) {  // Check the extension
         int type = *p++ * 0x100 + *p++;
@@ -207,18 +209,19 @@ bool TLS13::TLS13<SV>::sub_key_share(unsigned char *p) {
         AUTH::ECDSA::EC_Point Q{bnd_to_mpz(p + 5, p + 37) /**x[32]*/, bnd_to_mpz(p + 37, p + 69) /**y[32]*/, this->secp256r1_};
         premaster_secret_ = (Q * this->prv_key_).x; /** @remark TLS 1.3에서 key_share_extension을 통해 premaster_secret값을 설정한다!!*/
         return true;
-    } else if (*p == 0 && *(p + 1) == 29) {  // x25519 0x001d
-        uint8_t q[32];
-        curve25519_mul(q, this->prv_, p + 4);      // 상대방의 공개키 * 자신의 개인키 ( premaster_secret )
-        premaster_secret_ = bnd_to_mpz(q, q + 32); /** @remark TLS 1.3에서 key_share_extension을 통해 premaster_secret값을 설정한다!!*/
-        this->P_.x = -1;                           /*** @remark if use x25519 => secp256r1은 사용하지 못한다.*/
-        return true;
+    //} else if (*p == 0 && *(p + 1) == 29) {  // x25519 0x001d
+    //    uint8_t q[32];
+    //    curve25519_mul(q, this->prv_, p + 4);      // 상대방의 공개키 * 자신의 개인키 ( premaster_secret )
+    //    premaster_secret_ = bnd_to_mpz(q, q + 32); /** @remark TLS 1.3에서 key_share_extension을 통해 premaster_secret값을 설정한다!!*/
+    //    this->P_.x = -1;                           /*** @remark if use x25519 => secp256r1은 사용하지 못한다.*/
+    //    return true;
     } else
         return false;
 }
 
 template <bool SV>
 bool TLS13::TLS13<SV>::key_share(unsigned char *p, int len) {
+    len = *p++ * 0x100 + *p++;
     for (unsigned char *q = p; p < q + len; p += p[2] * 0x100 + p[3] + 4 /*type + length*/) {
         if (sub_key_share(p)) {
             return true;
@@ -292,9 +295,10 @@ bool TLS13::TLS13<SV>::server_ext(unsigned char *p) {
         int type = *p++ * 0x100 + *p++;
         int len = *p++ * 0x100 + *p++;
         // check the supported version extension..
-        if (type == 51) /** @brief check key share extension */ {
-            return key_share(p, len);
-        }
+        //if (type == 51) /** @brief check key share extension */ {
+        //    return key_share(p, len);
+        //}
+        if(type == 51 && sub_key_share(p)) return true;
         p += len;
     }
     return false;
@@ -362,8 +366,8 @@ string TLS13::TLS13<SV>::encrypted_extension() {
          */
         uint8_t supported_group[2] = {0, 10};            /** @brief extension type */
         uint8_t supported_group_list_length[2] = {0, 4}; /** @brief extension total length */
-        uint8_t secp256r1[2] = {0, 23};                  /** @brief 0x0017 */
         uint8_t x255[2] = {0, 29};                       /** @brief 0x001d */
+        uint8_t secp256r1[2] = {0, 23};                  /** @brief 0x0017 */
     } h;
     string r = TLS::TLS<SV>::struct_to_str(h);
     this->accumulated_handshakes_ += r;
@@ -383,7 +387,8 @@ TLS13::TLS13<SV>::TLS13() {
     // ECDSA
     DER::get_certificate_core(f2);
     auto jv = DER::pem_to_json(f2);
-    cout << jv << endl;
+    //cout << jv << endl;
+    //cout << jv[0][1] << endl;
     private_key = str_to_mpz(jv[0][1].asString());  // 비밀키 세팅
 
     std::vector<unsigned char> r;
@@ -544,7 +549,7 @@ optional<string> TLS13::TLS13<SV>::decode13(string &&s) {
 
     this->aes_[!SV].aad((uint8_t *)p, 5);                               // 상대방의 정보를 set Additional Auth Data
     this->aes_[!SV].xor_with_iv(seq);                                   // 상대방의 정보를 set IV
-    auto auth = this->aes_[!SV].encrypt(p->encrypted_msg, msg_len);    // 인증 태그를 얻고 복호화한다.
+    auto auth = this->aes_[!SV].decrypt(p->encrypted_msg, msg_len);     // 인증 태그를 얻고 복호화한다.
     this->aes_[!SV].xor_with_iv(seq);                                   // IV를 원상 복구 한다.
     if (equal(auth.begin(), auth.end(), p->encrypted_msg + msg_len)) {  // 생성한 인증태그와 수신한 인증태그를 비교한다.
         string r{p->encrypted_msg, p->encrypted_msg + msg_len};         // 복호화된 메시지
@@ -562,34 +567,38 @@ optional<string> TLS13::TLS13<SV>::decode13(string &&s) {
 }
 
 template <bool SV>
+string TLS13::TLS13<SV>::server_certificate13() {  // ecdsa certificate
+    return this->accumulate(ecdsa_certificate_).substr(5);
+}
+
+template <bool SV>
 bool TLS13::TLS13<SV>::handshake(std::function<std::optional<std::string>()> read_f,
                                  std::function<void(std::string)> write_f) {
     string s;
     optional<string> a;
     switch (1) {
-        case 1:                  // break로 간편하게 handshake중단 가능
-            if constexpr (SV) {  // Server
-                if (s = this->alert(2, 0);
-                    !(a = read_f()) /*Client Hello : 성공적으로 읽었다면*/ || (s = client_hello(move(*a))) != "" /*client_hello도 성공적으로 수행했다면*/) break;
-                if (s = this->server_hello(); premaster_secret_) {  // if TLS 1.3 && Server Hello Message 생성
-                    protect_handshake();                            // Set HandShake Traffic Secret
+        case 1:  // to use break
+            if constexpr (SV) {
+                if (s = this->alert(2, 0); !(a = read_f()) ||
+                                           (s = client_hello(move(*a))) != "") break;
+                if (s = server_hello(); premaster_secret_) {
+                    protect_handshake();
                     s += this->change_cipher_spec();
                     string t = encrypted_extension();
                     t += server_certificate13();
                     t += certificate_verify();
                     t += finished();
-                    // Handshake traffic secret으로 암호화!
-                    s += this->encode(move(t), TLS::HANDSHAKE);
-                    write_f(s);  // 전송
-                    if (s = this->alert(2, 0); !(a = read_f()) /*cient change_cipher_spec 성공적으로 읽었다면*/ ||
-                                               (s = this->change_cipher_spec(move(*a))) != "" /*change_cipher_spec도 성공적으로 수행 했다면*/) break;
-                    if (s = this->alert(2, 0); !(a = read_f()) ||
-                                               !(a = this->decode(move(*a))) /*암호화된 finished 복호화*/ || (protect_data(), false) /*set Application Traffic Secret*/ || (s = finished(move(*a))) != "" /*성공적으로 finished 분석*/) break;
-                } else {  // TLS 1.2
+                    //string tmp = this->accumulated_handshakes_;  // save after server finished
+                    s += encode(move(t), 22);                    // first condition true:read error->alert(2, 0)
+                    write_f(s);                                  // second condition true->error message of function v
+                    if (s = this->alert(2, 0); !(a = read_f()) || (s = this->change_cipher_spec(move(*a))) != "") break;
+                    if (s = this->alert(2, 0); !(a = read_f()) || !(a = this->decode(move(*a))) ||
+                                               (protect_data(), false) || (s = finished(move(*a))) != "") break;
+                } else {
                     s += this->server_certificate();
                     s += this->server_key_exchange();
                     s += this->server_hello_done();
-                    write_f(s);  // 전송
+                    write_f(s);
                     if (s = this->alert(2, 0); !(a = read_f()) ||
                                                (s = this->client_key_exchange(move(*a))) != "") break;
                     if (s = this->alert(2, 0); !(a = read_f()) ||
@@ -598,25 +607,22 @@ bool TLS13::TLS13<SV>::handshake(std::function<std::optional<std::string>()> rea
                                                (s = TLS::TLS<SV>::finished(move(*a))) != "") break;
                     s = this->change_cipher_spec();
                     s += TLS::TLS<SV>::finished();
-                    write_f(move(s));
+                    write_f(move(s));  // empty s
                 }
-            } else {                      // Client
-                write_f(client_hello());  // send client_hello message
+            } else {
+                write_f(client_hello());
                 if (a = read_f(); !a || (s = server_hello(move(*a))) != "") break;
-                if (premaster_secret_) {  // if TLS 1.3
-                    protect_handshake();  // set handshake traffic secret
+                if (premaster_secret_) {
+                    protect_handshake();  // should prepend header?
                     if (s = this->alert(2, 0); !(a = read_f()) ||
                                                (s = this->change_cipher_spec(move(*a))) != "") break;
                     if (s = this->alert(2, 0); !(a = read_f()) || !(a = this->decode(move(*a))))
                         break;
                     else
-                        this->accumulated_handshakes_ += *a; /*a는 복호화된 encrypted_extension + server_certificate13 + certificate_verify + finished*/
-                    /**
-                     * @todo server의 인증서를 확인하는 알고리즘!!
-                     */
+                        this->accumulated_handshakes_ += *a;
                     string tmp = this->accumulated_handshakes_;
                     s = this->change_cipher_spec();
-                    s += this->encode(finished());  // change_cipher_spec + finished message encode
+                    s += this->encode(finished());
                     write_f(move(s));
                     this->accumulated_handshakes_ = tmp;
                     protect_data();
@@ -638,8 +644,7 @@ bool TLS13::TLS13<SV>::handshake(std::function<std::optional<std::string>()> rea
                 }
             }
     }
-
-    if (s != "") {   // break로 중간에 HandShaking을 중단한 경우
+    if (s != "") {
         write_f(s);  // send alert message
         return false;
     } else
