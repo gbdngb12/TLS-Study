@@ -1,10 +1,7 @@
-project(auth)
+project(mpz_util)
+add_library(mpz_util "mpz_util.cc") 
 
-add_library(auth auth.cpp) 
-
-find_library(myjsoncpp jsoncpp REQUIRED)
 # if you are also using the GMPXX library, you will need to link it to the library
-#find_package(GMPXX REQUIRED)
 find_library(mygmpxx gmpxx REQUIRED)
 find_library(mygmp gmp REQUIRED)
 
@@ -20,15 +17,12 @@ else()
 	message(STATUS "gmpxx found! as ${mygmpxx}")
 endif()
 
-target_link_libraries(auth
+target_link_libraries(mpz_util
     PUBLIC
         ${mygmpxx}
         ${mygmp}
-        myutil
-        key_exchange
-        ${myjsoncpp}
 )
-set_target_properties(auth PROPERTIES PUBLIC_HEADER "auth.h")
+set_target_properties(mpz_util PROPERTIES PUBLIC_HEADER "mpz_util.h")
 
 # specify the include directory for the library
-target_include_directories(auth PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(mpz_util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

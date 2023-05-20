@@ -1,7 +1,2 @@
-add_subdirectory("util")
-add_subdirectory("auth")
 add_subdirectory("key_exchange")
-add_subdirectory("aes128")
-add_subdirectory("hash")
-add_subdirectory("tls")
-add_subdirectory("tcp_ip")
+add_subdirectory("mpz_util")
